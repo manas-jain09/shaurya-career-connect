@@ -39,8 +39,10 @@ export const useNotifications = (): NotificationData => {
 
       if (fetchError) throw fetchError;
       
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
+      // Type-cast the data
+      const typedNotifications: Notification[] = data || [];
+      setNotifications(typedNotifications);
+      setUnreadCount(typedNotifications.filter(n => !n.is_read).length || 0);
     } catch (err) {
       console.error('Error fetching notifications:', err);
       setError('Failed to load notifications');

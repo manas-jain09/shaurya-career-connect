@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { JobApplication } from '@/types/database.types';
+import { JobApplication, JobApplicationStatus } from '@/types/database.types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentProfile } from './useStudentProfile';
 
@@ -62,16 +62,23 @@ export const useJobApplications = (): JobApplicationData => {
 
       if (fetchError) throw fetchError;
       
-      setApplications(data || []);
+      // Process and type-cast the data
+      const typedApplications: JobApplication[] = data?.map(app => ({
+        ...app,
+        status: app.status as JobApplicationStatus,
+        job: app.job
+      })) || [];
+      
+      setApplications(typedApplications);
       
       // Calculate counts
-      if (data) {
-        const total = data.length;
-        const applied = data.filter(app => app.status === 'applied').length;
-        const underReview = data.filter(app => app.status === 'under_review').length;
-        const shortlisted = data.filter(app => app.status === 'shortlisted').length;
-        const rejected = data.filter(app => app.status === 'rejected').length;
-        const selected = data.filter(app => app.status === 'selected').length;
+      if (typedApplications.length > 0) {
+        const total = typedApplications.length;
+        const applied = typedApplications.filter(app => app.status === 'applied').length;
+        const underReview = typedApplications.filter(app => app.status === 'under_review').length;
+        const shortlisted = typedApplications.filter(app => app.status === 'shortlisted').length;
+        const rejected = typedApplications.filter(app => app.status === 'rejected').length;
+        const selected = typedApplications.filter(app => app.status === 'selected').length;
         
         setCounts({
           total,

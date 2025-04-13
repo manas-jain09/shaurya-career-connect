@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { JobPosting, JobApplication } from '@/types/database.types';
+import { JobPosting, JobApplication, JobPostingStatus, JobApplicationStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
@@ -50,12 +49,23 @@ const JobsPage = () => {
         
       if (applicationError) throw applicationError;
       
-      setJobs(jobData || []);
-      setApplications(applicationData || []);
+      // Type-cast the data
+      const typedJobs: JobPosting[] = jobData?.map(job => ({
+        ...job,
+        status: job.status as JobPostingStatus
+      })) || [];
+      
+      const typedApplications: JobApplication[] = applicationData?.map(app => ({
+        ...app,
+        status: app.status as JobApplicationStatus
+      })) || [];
+      
+      setJobs(typedJobs);
+      setApplications(typedApplications);
       
       // Check eligibility for each job
       if (profile) {
-        const eligibilityPromises = jobData?.map(async (job) => {
+        const eligibilityPromises = typedJobs.map(async (job) => {
           // Use the database function to check eligibility
           const { data, error } = await supabase
             .rpc('check_job_eligibility', {
@@ -69,11 +79,11 @@ const JobsPage = () => {
           }
           
           return { jobId: job.id, eligible: data };
-        }) || [];
+        });
         
         const eligibilityResults = await Promise.all(eligibilityPromises);
         const eligibilityMap = eligibilityResults.reduce((acc, curr) => {
-          acc[curr.jobId] = curr.eligible;
+          acc[curr.jobId as string] = curr.eligible;
           return acc;
         }, {} as Record<string, boolean>);
         
@@ -142,7 +152,7 @@ const JobsPage = () => {
   };
 
   // Get application status for a job
-  const getApplicationStatus = (jobId: string): string | null => {
+  const getApplicationStatus = (jobId: string): JobApplicationStatus | null => {
     const application = applications.find(app => app.job_id === jobId);
     return application ? application.status : null;
   };

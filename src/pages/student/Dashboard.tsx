@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +7,7 @@ import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
-import { JobPosting, Notification } from '@/types/database.types';
+import { JobPosting, JobPostingStatus, Notification } from '@/types/database.types';
 import { toast } from 'sonner';
 
 const Dashboard = () => {
@@ -35,11 +34,17 @@ const Dashboard = () => {
         
       if (error) throw error;
       
-      setRecentJobs(data || []);
+      // Type-cast the data
+      const typedJobs: JobPosting[] = data?.map(job => ({
+        ...job,
+        status: job.status as JobPostingStatus
+      })) || [];
+      
+      setRecentJobs(typedJobs);
       
       // Check eligibility for each job
       if (profile) {
-        const eligibilityPromises = data?.map(async (job) => {
+        const eligibilityPromises = typedJobs.map(async (job) => {
           const { data: eligData, error: eligError } = await supabase
             .rpc('check_job_eligibility', {
               p_student_id: profile.id,
@@ -52,11 +57,11 @@ const Dashboard = () => {
           }
           
           return { jobId: job.id, eligible: eligData };
-        }) || [];
+        });
         
         const eligibilityResults = await Promise.all(eligibilityPromises);
         const eligibilityMap = eligibilityResults.reduce((acc, curr) => {
-          acc[curr.jobId] = curr.eligible;
+          acc[curr.jobId as string] = curr.eligible;
           return acc;
         }, {} as Record<string, boolean>);
         
@@ -328,7 +333,7 @@ const Dashboard = () => {
                                   {app.status.replace('_', ' ').charAt(0).toUpperCase() + app.status.replace('_', ' ').slice(1)}
                                 </span>
                                 <p className="text-xs text-gray-500 mt-1">
-                                  Applied: {formatDate(app.created_at)}
+                                  Applied: {formatDate(app.created_at || '')}
                                 </p>
                               </div>
                             </div>
@@ -360,7 +365,7 @@ const Dashboard = () => {
                       notifications.map((notification) => (
                         <div key={notification.id} className="border-b pb-3 last:border-b-0 last:pb-0">
                           <p className="text-sm text-gray-800">{notification.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">{formatTimeAgo(notification.created_at)}</p>
+                          <p className="text-xs text-gray-500 mt-1">{formatTimeAgo(notification.created_at || '')}</p>
                         </div>
                       ))
                     ) : (

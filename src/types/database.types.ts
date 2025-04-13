@@ -66,6 +66,8 @@ export interface Resume {
   updated_at?: string;
 }
 
+export type JobPostingStatus = 'active' | 'closed' | 'draft';
+
 export interface JobPosting {
   id?: string;
   title: string;
@@ -78,19 +80,27 @@ export interface JobPosting {
   min_class_xii_marks?: number;
   min_graduation_marks?: number;
   allow_backlog: boolean;
-  status: 'active' | 'closed' | 'draft';
+  status: JobPostingStatus;
   created_at?: string;
   updated_at?: string;
 }
+
+export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected';
 
 export interface JobApplication {
   id?: string;
   job_id: string;
   student_id: string;
-  status: 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected';
+  status: JobApplicationStatus;
   admin_notes?: string;
   created_at?: string;
   updated_at?: string;
+  job?: {
+    title: string;
+    company_name: string;
+    location: string;
+    package: string;
+  };
 }
 
 export interface Notification {
