@@ -9,13 +9,414 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      class_x_details: {
+        Row: {
+          board: string
+          cgpa_scale: number | null
+          created_at: string
+          id: string
+          is_cgpa: boolean
+          marks: number
+          marksheet_url: string | null
+          passing_year: number
+          school_name: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          board: string
+          cgpa_scale?: number | null
+          created_at?: string
+          id?: string
+          is_cgpa?: boolean
+          marks: number
+          marksheet_url?: string | null
+          passing_year: number
+          school_name: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          board?: string
+          cgpa_scale?: number | null
+          created_at?: string
+          id?: string
+          is_cgpa?: boolean
+          marks?: number
+          marksheet_url?: string | null
+          passing_year?: number
+          school_name?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_x_details_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      class_xii_details: {
+        Row: {
+          board: string
+          cgpa_scale: number | null
+          created_at: string
+          id: string
+          is_cgpa: boolean
+          marks: number
+          marksheet_url: string | null
+          passing_year: number
+          school_name: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          board: string
+          cgpa_scale?: number | null
+          created_at?: string
+          id?: string
+          is_cgpa?: boolean
+          marks: number
+          marksheet_url?: string | null
+          passing_year: number
+          school_name: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          board?: string
+          cgpa_scale?: number | null
+          created_at?: string
+          id?: string
+          is_cgpa?: boolean
+          marks?: number
+          marksheet_url?: string | null
+          passing_year?: number
+          school_name?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_xii_details_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      graduation_details: {
+        Row: {
+          cgpa_scale: number | null
+          college_name: string
+          course: string
+          created_at: string
+          has_backlog: boolean
+          id: string
+          is_cgpa: boolean
+          marks: number
+          marksheet_url: string | null
+          passing_year: number
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          cgpa_scale?: number | null
+          college_name: string
+          course: string
+          created_at?: string
+          has_backlog?: boolean
+          id?: string
+          is_cgpa?: boolean
+          marks: number
+          marksheet_url?: string | null
+          passing_year: number
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          cgpa_scale?: number | null
+          college_name?: string
+          course?: string
+          created_at?: string
+          has_backlog?: boolean
+          id?: string
+          is_cgpa?: boolean
+          marks?: number
+          marksheet_url?: string | null
+          passing_year?: number
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "graduation_details_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_applications: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          job_id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_applications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_applications_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_postings: {
+        Row: {
+          allow_backlog: boolean
+          application_deadline: string
+          company_name: string
+          created_at: string
+          description: string
+          id: string
+          location: string
+          min_class_x_marks: number | null
+          min_class_xii_marks: number | null
+          min_graduation_marks: number | null
+          package: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          allow_backlog?: boolean
+          application_deadline: string
+          company_name: string
+          created_at?: string
+          description: string
+          id?: string
+          location: string
+          min_class_x_marks?: number | null
+          min_class_xii_marks?: number | null
+          min_graduation_marks?: number | null
+          package: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          allow_backlog?: boolean
+          application_deadline?: string
+          company_name?: string
+          created_at?: string
+          description?: string
+          id?: string
+          location?: string
+          min_class_x_marks?: number | null
+          min_class_xii_marks?: number | null
+          min_graduation_marks?: number | null
+          package?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      resumes: {
+        Row: {
+          created_at: string
+          file_url: string
+          id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_url: string
+          id?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_url?: string
+          id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resumes_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_profiles: {
+        Row: {
+          address: string | null
+          created_at: string
+          dob: string
+          first_name: string
+          gender: string
+          id: string
+          is_verified: boolean
+          last_name: string
+          phone: string
+          updated_at: string
+          user_id: string
+          verification_notes: string | null
+          verification_status: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          dob: string
+          first_name: string
+          gender: string
+          id?: string
+          is_verified?: boolean
+          last_name: string
+          phone: string
+          updated_at?: string
+          user_id: string
+          verification_notes?: string | null
+          verification_status?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          dob?: string
+          first_name?: string
+          gender?: string
+          id?: string
+          is_verified?: boolean
+          last_name?: string
+          phone?: string
+          updated_at?: string
+          user_id?: string
+          verification_notes?: string | null
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_profiles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          password: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          password: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          password?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_job_eligibility: {
+        Args: { p_student_id: string; p_job_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

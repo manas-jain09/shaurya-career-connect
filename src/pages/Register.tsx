@@ -1,14 +1,19 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { uploadFile } from '@/utils/helpers';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [activeStep, setActiveStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -18,6 +23,7 @@ const Register = () => {
   const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [gender, setGender] = useState('');
+  const [address, setAddress] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
@@ -26,6 +32,8 @@ const Register = () => {
   const [xBoard, setXBoard] = useState('');
   const [xMarks, setXMarks] = useState('');
   const [xPassingYear, setXPassingYear] = useState('');
+  const [xIsCGPA, setXIsCGPA] = useState(false);
+  const [xCGPAScale, setXCGPAScale] = useState<string>('');
   const [xMarksheetFile, setXMarksheetFile] = useState<File | null>(null);
   
   // Class XII Fields
@@ -33,6 +41,8 @@ const Register = () => {
   const [xiiBoard, setXiiBoard] = useState('');
   const [xiiMarks, setXiiMarks] = useState('');
   const [xiiPassingYear, setXiiPassingYear] = useState('');
+  const [xiiIsCGPA, setXiiIsCGPA] = useState(false);
+  const [xiiCGPAScale, setXiiCGPAScale] = useState<string>('');
   const [xiiMarksheetFile, setXiiMarksheetFile] = useState<File | null>(null);
   
   // Graduation Fields
@@ -40,6 +50,8 @@ const Register = () => {
   const [gradCourse, setGradCourse] = useState('');
   const [gradYear, setGradYear] = useState('');
   const [gradMarks, setGradMarks] = useState('');
+  const [gradIsCGPA, setGradIsCGPA] = useState(false);
+  const [gradCGPAScale, setGradCGPAScale] = useState<string>('');
   const [hasBacklog, setHasBacklog] = useState(false);
   const [gradMarksheetFile, setGradMarksheetFile] = useState<File | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
@@ -112,26 +124,157 @@ const Register = () => {
     setActiveStep((prev) => prev - 1);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateUploads()) return;
     
     setIsLoading(true);
     
-    // In a real app, this would be an API call to register the user
-    setTimeout(() => {
+    try {
+      // Step 1: Register user in users table
+      const userId = await register(email, password, 'student');
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Parse name into first and last name
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Step 2: Create student profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('student_profiles')
+        .insert({
+          user_id: userId,
+          first_name: firstName,
+          last_name: lastName,
+          dob,
+          gender,
+          phone,
+          address,
+          is_verified: false,
+          verification_status: 'pending'
+        })
+        .select('id')
+        .single();
+
+      if (profileError || !profileData) {
+        throw new Error(profileError?.message || 'Failed to create student profile');
+      }
+
+      const studentId = profileData.id;
+
+      // Upload files and get URLs
+      const uploadPromises = [];
+
+      // Upload Class X marksheet
+      if (xMarksheetFile) {
+        uploadPromises.push(
+          uploadFile(xMarksheetFile, 'student_documents', `${studentId}/class_x`)
+            .then(async (fileUrl) => {
+              if (!fileUrl) throw new Error('Failed to upload Class X marksheet');
+              
+              await supabase.from('class_x_details').insert({
+                student_id: studentId,
+                school_name: xSchool,
+                board: xBoard,
+                marks: parseFloat(xMarks),
+                is_cgpa: xIsCGPA,
+                cgpa_scale: xIsCGPA ? parseInt(xCGPAScale) : null,
+                passing_year: parseInt(xPassingYear),
+                marksheet_url: fileUrl
+              });
+            })
+        );
+      }
+
+      // Upload Class XII marksheet
+      if (xiiMarksheetFile) {
+        uploadPromises.push(
+          uploadFile(xiiMarksheetFile, 'student_documents', `${studentId}/class_xii`)
+            .then(async (fileUrl) => {
+              if (!fileUrl) throw new Error('Failed to upload Class XII marksheet');
+              
+              await supabase.from('class_xii_details').insert({
+                student_id: studentId,
+                school_name: xiiSchool,
+                board: xiiBoard,
+                marks: parseFloat(xiiMarks),
+                is_cgpa: xiiIsCGPA,
+                cgpa_scale: xiiIsCGPA ? parseInt(xiiCGPAScale) : null,
+                passing_year: parseInt(xiiPassingYear),
+                marksheet_url: fileUrl
+              });
+            })
+        );
+      }
+
+      // Upload Graduation marksheet
+      if (gradMarksheetFile) {
+        uploadPromises.push(
+          uploadFile(gradMarksheetFile, 'student_documents', `${studentId}/graduation`)
+            .then(async (fileUrl) => {
+              if (!fileUrl) throw new Error('Failed to upload Graduation marksheet');
+              
+              await supabase.from('graduation_details').insert({
+                student_id: studentId,
+                college_name: gradCollege,
+                course: gradCourse,
+                marks: parseFloat(gradMarks),
+                is_cgpa: gradIsCGPA,
+                cgpa_scale: gradIsCGPA ? parseInt(gradCGPAScale) : null,
+                passing_year: parseInt(gradYear),
+                has_backlog: hasBacklog,
+                marksheet_url: fileUrl
+              });
+            })
+        );
+      }
+
+      // Upload Resume
+      if (resumeFile) {
+        uploadPromises.push(
+          uploadFile(resumeFile, 'student_documents', `${studentId}/resume`)
+            .then(async (fileUrl) => {
+              if (!fileUrl) throw new Error('Failed to upload Resume');
+              
+              await supabase.from('resumes').insert({
+                student_id: studentId,
+                file_url: fileUrl
+              });
+            })
+        );
+      }
+
+      // Wait for all uploads and database insertions to complete
+      await Promise.all(uploadPromises);
+
+      // Create notification for admin
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'New Student Registration',
+        message: `${name} has registered and awaiting profile verification.`,
+        is_read: false
+      });
+
       setIsLoading(false);
       toast.success('Registration successful! Please log in after admin verification.');
       navigate('/login');
-    }, 2000);
+    } catch (error) {
+      console.error('Registration error:', error);
+      setIsLoading(false);
+      toast.error('Failed to complete registration. Please try again.');
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4">
       <div className="bg-white shadow-lg rounded-lg p-6 w-full max-w-3xl">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-shaurya-primary">Student Registration</h1>
+          <h1 className="text-2xl font-bold text-blue-600">Student Registration</h1>
           <p className="text-gray-600 mt-1">Join Shaurya Placement Portal</p>
         </div>
 
@@ -147,7 +290,7 @@ const Register = () => {
                 <div 
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                     index <= activeStep 
-                      ? 'bg-shaurya-primary text-white' 
+                      ? 'bg-blue-600 text-white' 
                       : 'bg-gray-200 text-gray-500'
                   }`}
                 >
@@ -158,7 +301,7 @@ const Register = () => {
                 {index < steps.length - 1 && (
                   <div 
                     className={`absolute top-4 left-1/2 w-full h-px ${
-                      index < activeStep ? 'bg-shaurya-primary' : 'bg-gray-200'
+                      index < activeStep ? 'bg-blue-600' : 'bg-gray-200'
                     }`}
                   />
                 )}
@@ -216,7 +359,7 @@ const Register = () => {
                   <Label htmlFor="gender">Gender*</Label>
                   <select
                     id="gender"
-                    className="form-input"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                     value={gender}
                     onChange={(e) => setGender(e.target.value)}
                   >
@@ -231,6 +374,8 @@ const Register = () => {
                   <Label htmlFor="address">Address</Label>
                   <Input
                     id="address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                     placeholder="Enter your address"
                   />
                 </div>
@@ -292,22 +437,49 @@ const Register = () => {
                     </div>
                     
                     <div>
-                      <Label htmlFor="xMarks">Marks (%/CGPA)*</Label>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Checkbox
+                          id="xIsCGPA"
+                          checked={xIsCGPA}
+                          onCheckedChange={(checked) => setXIsCGPA(checked === true)}
+                        />
+                        <Label htmlFor="xIsCGPA">CGPA (instead of percentage)</Label>
+                      </div>
+                      <Label htmlFor="xMarks">{xIsCGPA ? "CGPA*" : "Percentage*"}</Label>
                       <Input
                         id="xMarks"
                         value={xMarks}
                         onChange={(e) => setXMarks(e.target.value)}
-                        placeholder="Enter percentage or CGPA"
+                        placeholder={xIsCGPA ? "Enter CGPA" : "Enter percentage"}
+                        type="number"
+                        step={xIsCGPA ? "0.1" : "0.01"}
                       />
                     </div>
                     
-                    <div>
+                    {xIsCGPA && (
+                      <div>
+                        <Label htmlFor="xCGPAScale">CGPA Scale*</Label>
+                        <select
+                          id="xCGPAScale"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          value={xCGPAScale}
+                          onChange={(e) => setXCGPAScale(e.target.value)}
+                        >
+                          <option value="">Select Scale</option>
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div className={xIsCGPA ? "col-span-2" : ""}>
                       <Label htmlFor="xPassingYear">Year of Passing*</Label>
                       <Input
                         id="xPassingYear"
                         value={xPassingYear}
                         onChange={(e) => setXPassingYear(e.target.value)}
                         placeholder="Enter year of passing"
+                        type="number"
                       />
                     </div>
                   </div>
@@ -336,22 +508,49 @@ const Register = () => {
                     </div>
                     
                     <div>
-                      <Label htmlFor="xiiMarks">Marks (%/CGPA)*</Label>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Checkbox
+                          id="xiiIsCGPA"
+                          checked={xiiIsCGPA}
+                          onCheckedChange={(checked) => setXiiIsCGPA(checked === true)}
+                        />
+                        <Label htmlFor="xiiIsCGPA">CGPA (instead of percentage)</Label>
+                      </div>
+                      <Label htmlFor="xiiMarks">{xiiIsCGPA ? "CGPA*" : "Percentage*"}</Label>
                       <Input
                         id="xiiMarks"
                         value={xiiMarks}
                         onChange={(e) => setXiiMarks(e.target.value)}
-                        placeholder="Enter percentage or CGPA"
+                        placeholder={xiiIsCGPA ? "Enter CGPA" : "Enter percentage"}
+                        type="number"
+                        step={xiiIsCGPA ? "0.1" : "0.01"}
                       />
                     </div>
                     
-                    <div>
+                    {xiiIsCGPA && (
+                      <div>
+                        <Label htmlFor="xiiCGPAScale">CGPA Scale*</Label>
+                        <select
+                          id="xiiCGPAScale"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          value={xiiCGPAScale}
+                          onChange={(e) => setXiiCGPAScale(e.target.value)}
+                        >
+                          <option value="">Select Scale</option>
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div className={xiiIsCGPA ? "col-span-2" : ""}>
                       <Label htmlFor="xiiPassingYear">Year of Passing*</Label>
                       <Input
                         id="xiiPassingYear"
                         value={xiiPassingYear}
                         onChange={(e) => setXiiPassingYear(e.target.value)}
                         placeholder="Enter year of passing"
+                        type="number"
                       />
                     </div>
                   </div>
@@ -380,33 +579,58 @@ const Register = () => {
                     </div>
                     
                     <div>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Checkbox
+                          id="gradIsCGPA"
+                          checked={gradIsCGPA}
+                          onCheckedChange={(checked) => setGradIsCGPA(checked === true)}
+                        />
+                        <Label htmlFor="gradIsCGPA">CGPA (instead of percentage)</Label>
+                      </div>
+                      <Label htmlFor="gradMarks">{gradIsCGPA ? "CGPA*" : "Percentage*"}</Label>
+                      <Input
+                        id="gradMarks"
+                        value={gradMarks}
+                        onChange={(e) => setGradMarks(e.target.value)}
+                        placeholder={gradIsCGPA ? "Enter CGPA" : "Enter percentage"}
+                        type="number"
+                        step={gradIsCGPA ? "0.1" : "0.01"}
+                      />
+                    </div>
+                    
+                    {gradIsCGPA && (
+                      <div>
+                        <Label htmlFor="gradCGPAScale">CGPA Scale*</Label>
+                        <select
+                          id="gradCGPAScale"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                          value={gradCGPAScale}
+                          onChange={(e) => setGradCGPAScale(e.target.value)}
+                        >
+                          <option value="">Select Scale</option>
+                          <option value="5">5</option>
+                          <option value="10">10</option>
+                        </select>
+                      </div>
+                    )}
+                    
+                    <div>
                       <Label htmlFor="gradYear">Graduation Year*</Label>
                       <Input
                         id="gradYear"
                         value={gradYear}
                         onChange={(e) => setGradYear(e.target.value)}
                         placeholder="Enter graduation year"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="gradMarks">Marks (%/CGPA)*</Label>
-                      <Input
-                        id="gradMarks"
-                        value={gradMarks}
-                        onChange={(e) => setGradMarks(e.target.value)}
-                        placeholder="Enter percentage or CGPA"
+                        type="number"
                       />
                     </div>
                     
                     <div className="col-span-2">
                       <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           id="hasBacklog"
                           checked={hasBacklog}
-                          onChange={(e) => setHasBacklog(e.target.checked)}
-                          className="h-4 w-4 text-shaurya-primary rounded"
+                          onCheckedChange={(checked) => setHasBacklog(checked === true)}
                         />
                         <Label htmlFor="hasBacklog">
                           I have an active backlog
@@ -483,7 +707,7 @@ const Register = () => {
                 type="button" 
                 variant="outline" 
                 onClick={handleBack}
-                className="border-shaurya-primary text-shaurya-primary"
+                className="border-blue-600 text-blue-600"
               >
                 Back
               </Button>
@@ -493,14 +717,14 @@ const Register = () => {
               <Button 
                 type="button" 
                 onClick={handleNext}
-                className="ml-auto bg-shaurya-primary hover:bg-shaurya-dark"
+                className="ml-auto bg-blue-600 hover:bg-blue-700"
               >
                 Next
               </Button>
             ) : (
               <Button 
                 type="submit"
-                className="ml-auto bg-shaurya-primary hover:bg-shaurya-dark"
+                className="ml-auto bg-blue-600 hover:bg-blue-700"
                 disabled={isLoading}
               >
                 {isLoading ? 'Submitting...' : 'Submit Registration'}
@@ -512,7 +736,7 @@ const Register = () => {
         <div className="mt-6 text-center text-sm">
           <p className="text-gray-600">
             Already have an account?{' '}
-            <a href="/login" className="text-shaurya-primary hover:underline">
+            <a href="/login" className="text-blue-600 hover:underline">
               Login here
             </a>
           </p>

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -13,10 +13,17 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'student' | 'admin'>('student');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    // Redirect if already logged in
+    if (isAuthenticated) {
+      navigate(isAdmin ? '/admin/dashboard' : '/student/dashboard');
+    }
+  }, [isAuthenticated, isAdmin, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -28,26 +35,22 @@ const Login = () => {
     }
 
     // Attempt login
-    const isSuccessful = login(email, password, role);
+    const isSuccessful = await login(email, password, role);
     
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      if (isSuccessful) {
-        toast.success(`Logged in successfully as ${role}`);
-        // Redirect based on role
-        navigate(role === 'admin' ? '/admin/dashboard' : '/student/dashboard');
-      } else {
-        toast.error('Invalid email or password');
-      }
-    }, 1000); // Artificial delay for UX
+    setIsLoading(false);
+    
+    if (isSuccessful) {
+      toast.success(`Logged in successfully as ${role}`);
+      // Redirect based on role
+      navigate(role === 'admin' ? '/admin/dashboard' : '/student/dashboard');
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="auth-card">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-shaurya-primary">Shaurya</h1>
+          <h1 className="text-3xl font-bold text-blue-600">Shaurya</h1>
           <p className="text-gray-600">Placement Automation Platform</p>
         </div>
 
@@ -96,7 +99,7 @@ const Login = () => {
 
           <Button 
             type="submit" 
-            className="w-full bg-shaurya-primary hover:bg-shaurya-dark"
+            className="w-full bg-blue-600 hover:bg-blue-700"
             disabled={isLoading}
           >
             {isLoading ? 'Logging in...' : 'Login'}
@@ -106,7 +109,7 @@ const Login = () => {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Don't have an account?{' '}
-            <a href="/register" className="text-shaurya-primary hover:underline">
+            <a href="/register" className="text-blue-600 hover:underline">
               Register here
             </a>
           </p>
