@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -36,12 +35,19 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
+
     --sidebar-foreground: 240 5.3% 26.1%;
+
     --sidebar-primary: 240 5.9% 10%;
+
     --sidebar-primary-foreground: 0 0% 98%;
+
     --sidebar-accent: 240 4.8% 95.9%;
+
     --sidebar-accent-foreground: 240 5.9% 10%;
+
     --sidebar-border: 220 13% 91%;
+
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -91,51 +97,5 @@
 
   body {
     @apply bg-background text-foreground;
-  }
-}
-
-@layer components {
-  .shaurya-container {
-    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
-  }
-  
-  .auth-card {
-    @apply bg-white shadow-lg rounded-lg p-6 w-full max-w-md;
-  }
-  
-  .dashboard-card {
-    @apply bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow;
-  }
-  
-  .btn-primary {
-    @apply bg-shaurya-primary hover:bg-shaurya-dark text-white font-medium py-2 px-4 rounded-md transition-colors;
-  }
-  
-  .btn-secondary {
-    @apply bg-white border border-shaurya-primary text-shaurya-primary hover:bg-shaurya-light font-medium py-2 px-4 rounded-md transition-colors;
-  }
-  
-  .form-input {
-    @apply w-full rounded-md border border-gray-300 shadow-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-shaurya-accent focus:border-transparent;
-  }
-  
-  .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
-  }
-  
-  .badge-verified {
-    @apply bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded;
-  }
-  
-  .badge-unverified {
-    @apply bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded;
-  }
-  
-  .nav-link {
-    @apply text-gray-700 hover:text-shaurya-primary transition-colors;
-  }
-  
-  .nav-link-active {
-    @apply text-shaurya-primary font-medium;
   }
 }
