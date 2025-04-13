@@ -34,15 +34,20 @@ const Login = () => {
       return;
     }
 
-    // Attempt login
-    const isSuccessful = await login(email, password, role);
-    
-    setIsLoading(false);
-    
-    if (isSuccessful) {
-      toast.success(`Logged in successfully as ${role}`);
-      // Redirect based on role
-      navigate(role === 'admin' ? '/admin/dashboard' : '/student/dashboard');
+    try {
+      // Attempt login
+      const isSuccessful = await login(email, password, role);
+      
+      if (isSuccessful) {
+        toast.success(`Logged in successfully as ${role}`);
+        // Redirect based on role
+        navigate(role === 'admin' ? '/admin/dashboard' : '/student/dashboard');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -120,9 +125,9 @@ const Login = () => {
               <div>Password: password</div>
             </div>
             <div>
-              <div className="font-medium mb-1">Demo Admin</div>
-              <div>Email: admin@example.com</div>
-              <div>Password: password</div>
+              <div className="font-medium mb-1">Admin Account</div>
+              <div>Email: admin@shaurya.edu</div>
+              <div>Password: admin123</div>
             </div>
           </div>
         </div>

@@ -110,8 +110,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .eq('role', role)
         .limit(1);
 
-      if (error || !users || users.length === 0) {
-        toast.error('Invalid email or role');
+      if (error) {
+        console.error('Login query error:', error);
+        toast.error('Failed to authenticate. Please try again.');
+        return false;
+      }
+
+      if (!users || users.length === 0) {
+        toast.error(`No ${role} account found with this email`);
         return false;
       }
 
@@ -172,7 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return true;
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Login failed');
+      toast.error('Login failed. Please try again.');
       return false;
     }
   };
