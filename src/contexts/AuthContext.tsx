@@ -128,8 +128,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       let isVerified = false;
       let profileId = undefined;
 
+      // Ensure role is a valid UserRole type
+      const userRole: UserRole = (userRecord.role === 'student' || userRecord.role === 'admin') 
+        ? userRecord.role 
+        : null;
+
       // If student, get profile info
-      if (role === 'student') {
+      if (userRole === 'student') {
         const { data: profileData } = await supabase
           .from('student_profiles')
           .select('*')
@@ -156,7 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         id: userRecord.id,
         name: userName,
         email: userRecord.email,
-        role: userRecord.role,
+        role: userRole,
         isVerified,
         profileId,
       };
