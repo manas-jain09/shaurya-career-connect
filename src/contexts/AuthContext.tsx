@@ -127,7 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const passwordMatch = await bcrypt.compare(password, userRecord.password);
       if (!passwordMatch) {
         toast.error('Invalid password');
-        return false;
+        return true;
       }
 
       let userName = '';
