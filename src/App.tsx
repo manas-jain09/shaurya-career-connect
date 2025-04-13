@@ -14,6 +14,9 @@ import NotFound from "./pages/NotFound";
 
 // Student Pages
 import StudentDashboard from "./pages/student/Dashboard";
+import StudentProfile from "./pages/student/Profile";
+import StudentJobs from "./pages/student/Jobs";
+import StudentNotifications from "./pages/student/Notifications";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -22,7 +25,13 @@ const queryClient = new QueryClient();
 
 // Protected Route Component
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode; requiredRole?: 'admin' | 'student' }) => {
-  const { isAuthenticated, isAdmin, user } = useAuth();
+  const { isAuthenticated, isAdmin, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin w-8 h-8 border-4 border-shaurya-primary border-t-transparent rounded-full"></div>
+    </div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -53,6 +62,30 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute requiredRole="student">
             <StudentDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/student/profile" 
+        element={
+          <ProtectedRoute requiredRole="student">
+            <StudentProfile />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/student/jobs" 
+        element={
+          <ProtectedRoute requiredRole="student">
+            <StudentJobs />
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/student/notifications" 
+        element={
+          <ProtectedRoute requiredRole="student">
+            <StudentNotifications />
           </ProtectedRoute>
         } 
       />

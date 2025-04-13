@@ -1,21 +1,28 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Home, User, Briefcase, Bell, LogOut } from 'lucide-react';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const StudentLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const { unreadCount, refreshData: refreshNotifications } = useNotifications();
 
   const navLinks = [
     { name: 'Dashboard', path: '/student/dashboard', icon: Home },
     { name: 'My Profile', path: '/student/profile', icon: User },
     { name: 'Job Listings', path: '/student/jobs', icon: Briefcase },
-    { name: 'Notifications', path: '/student/notifications', icon: Bell },
+    { name: 'Notifications', path: '/student/notifications', icon: Bell, badge: unreadCount > 0 ? unreadCount : null },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    // Refresh notifications when layout is mounted
+    refreshNotifications();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -55,7 +62,12 @@ const StudentLayout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                       }`}
                     >
                       <link.icon size={18} className="mr-2" />
-                      {link.name}
+                      <span>{link.name}</span>
+                      {link.badge && (
+                        <span className="ml-auto bg-red-500 text-white text-xs font-medium rounded-full h-5 min-w-5 flex items-center justify-center px-1">
+                          {link.badge > 99 ? '99+' : link.badge}
+                        </span>
+                      )}
                     </Link>
                   </li>
                 ))}
