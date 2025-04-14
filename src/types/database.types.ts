@@ -48,6 +48,7 @@ export interface GraduationDetails {
   student_id: string;
   college_name: string;
   course: string;
+  division?: string;
   marks: number;
   is_cgpa: boolean;
   cgpa_scale?: number;
@@ -76,9 +77,13 @@ export interface JobPosting {
   location: string;
   package: string;
   application_deadline: string;
-  min_class_x_marks?: number;
-  min_class_xii_marks?: number;
-  min_graduation_marks?: number;
+  min_class_x_marks?: number | null;
+  min_class_xii_marks?: number | null;
+  min_graduation_marks?: number | null;
+  eligible_courses?: string[] | null;
+  eligible_passing_years?: number[] | null;
+  min_cgpa?: number | null;
+  cgpa_scale?: number | null;
   allow_backlog: boolean;
   status: JobPostingStatus;
   created_at?: string;
@@ -100,6 +105,12 @@ export interface JobApplication {
     company_name: string;
     location: string;
     package: string;
+  };
+  student_profile?: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    is_verified: boolean;
   };
 }
 

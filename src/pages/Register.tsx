@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadFile } from '@/utils/helpers';
@@ -9,7 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Checkbox,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -48,6 +54,7 @@ const Register = () => {
   // Graduation Fields
   const [gradCollege, setGradCollege] = useState('');
   const [gradCourse, setGradCourse] = useState('');
+  const [gradDivision, setGradDivision] = useState('');
   const [gradYear, setGradYear] = useState('');
   const [gradMarks, setGradMarks] = useState('');
   const [gradIsCGPA, setGradIsCGPA] = useState(false);
@@ -55,6 +62,45 @@ const Register = () => {
   const [hasBacklog, setHasBacklog] = useState(false);
   const [gradMarksheetFile, setGradMarksheetFile] = useState<File | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+
+  // Course and Division Options
+  const courseOptions = [
+    "Mechanical Engineering",
+    "Electrical and Electronics Engineering (EEE)",
+    "Computer Engineering and Technology(Core)",
+    "Computer Engineering and Technology - AIDS",
+    "Computer Engineering and Technology - Cyber Security",
+    "Computer Engineering and Technology - CSBS"
+  ];
+
+  // Division options based on course
+  const getDivisionOptions = (course: string) => {
+    if (course.includes("Electrical and Electronics")) {
+      return [
+        "ECE_AIML_Div_A",
+        "ECE_AIML_Div_B",
+        "ECE_Core_Div_A",
+        "ECE_Core_Div_B",
+        "E&CE"
+      ];
+    } else if (course.includes("Mechanical")) {
+      return [
+        "Mechanical - Div A",
+        "Mechanical - Div B",
+        "Mechanical - Div C",
+        "Robotics & Automation - Div A",
+        "Robotics & Automation - Div B"
+      ];
+    } else if (course.includes("Computer Engineering")) {
+      return ["Div A", "Div B", "Div C", "Div D", "Div E", "Div F", "Div G", "Div H", "Div I", "Div J"];
+    }
+    return [];
+  };
+
+  // Reset division when course changes
+  useEffect(() => {
+    setGradDivision('');
+  }, [gradCourse]);
 
   const steps = [
     { id: 'personal', label: 'Personal Information' },
@@ -98,6 +144,12 @@ const Register = () => {
     
     if (!gradCollege || !gradCourse || !gradYear || !gradMarks) {
       toast.error('Please fill all Graduation details');
+      return false;
+    }
+    
+    // Validate division if course is selected
+    if (gradCourse && getDivisionOptions(gradCourse).length > 0 && !gradDivision) {
+      toast.error('Please select a division for your course');
       return false;
     }
     
@@ -223,6 +275,7 @@ const Register = () => {
                 student_id: studentId,
                 college_name: gradCollege,
                 course: gradCourse,
+                division: gradDivision || null,
                 marks: parseFloat(gradMarks),
                 is_cgpa: gradIsCGPA,
                 cgpa_scale: gradIsCGPA ? parseInt(gradCGPAScale) : null,
@@ -357,17 +410,16 @@ const Register = () => {
                 
                 <div>
                   <Label htmlFor="gender">Gender*</Label>
-                  <select
-                    id="gender"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                    value={gender}
-                    onChange={(e) => setGender(e.target.value)}
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <Select value={gender} onValueChange={setGender}>
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Select Gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div>
@@ -459,16 +511,15 @@ const Register = () => {
                     {xIsCGPA && (
                       <div>
                         <Label htmlFor="xCGPAScale">CGPA Scale*</Label>
-                        <select
-                          id="xCGPAScale"
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          value={xCGPAScale}
-                          onChange={(e) => setXCGPAScale(e.target.value)}
-                        >
-                          <option value="">Select Scale</option>
-                          <option value="5">5</option>
-                          <option value="10">10</option>
-                        </select>
+                        <Select value={xCGPAScale} onValueChange={setXCGPAScale}>
+                          <SelectTrigger id="xCGPAScale">
+                            <SelectValue placeholder="Select Scale" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                     
@@ -530,16 +581,15 @@ const Register = () => {
                     {xiiIsCGPA && (
                       <div>
                         <Label htmlFor="xiiCGPAScale">CGPA Scale*</Label>
-                        <select
-                          id="xiiCGPAScale"
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          value={xiiCGPAScale}
-                          onChange={(e) => setXiiCGPAScale(e.target.value)}
-                        >
-                          <option value="">Select Scale</option>
-                          <option value="5">5</option>
-                          <option value="10">10</option>
-                        </select>
+                        <Select value={xiiCGPAScale} onValueChange={setXiiCGPAScale}>
+                          <SelectTrigger id="xiiCGPAScale">
+                            <SelectValue placeholder="Select Scale" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                     
@@ -570,13 +620,37 @@ const Register = () => {
                     
                     <div>
                       <Label htmlFor="gradCourse">Course*</Label>
-                      <Input
-                        id="gradCourse"
-                        value={gradCourse}
-                        onChange={(e) => setGradCourse(e.target.value)}
-                        placeholder="Enter course name (e.g., B.Tech)"
-                      />
+                      <Select value={gradCourse} onValueChange={setGradCourse}>
+                        <SelectTrigger id="gradCourse">
+                          <SelectValue placeholder="Select Course" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {courseOptions.map((course) => (
+                            <SelectItem key={course} value={course}>
+                              {course}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
+                    
+                    {getDivisionOptions(gradCourse).length > 0 && (
+                      <div>
+                        <Label htmlFor="gradDivision">Division*</Label>
+                        <Select value={gradDivision} onValueChange={setGradDivision}>
+                          <SelectTrigger id="gradDivision">
+                            <SelectValue placeholder="Select Division" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getDivisionOptions(gradCourse).map((division) => (
+                              <SelectItem key={division} value={division}>
+                                {division}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     
                     <div>
                       <div className="flex items-center space-x-2 mb-2">
@@ -601,16 +675,15 @@ const Register = () => {
                     {gradIsCGPA && (
                       <div>
                         <Label htmlFor="gradCGPAScale">CGPA Scale*</Label>
-                        <select
-                          id="gradCGPAScale"
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-                          value={gradCGPAScale}
-                          onChange={(e) => setGradCGPAScale(e.target.value)}
-                        >
-                          <option value="">Select Scale</option>
-                          <option value="5">5</option>
-                          <option value="10">10</option>
-                        </select>
+                        <Select value={gradCGPAScale} onValueChange={setGradCGPAScale}>
+                          <SelectTrigger id="gradCGPAScale">
+                            <SelectValue placeholder="Select Scale" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
                     
