@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { JobPosting, JobPostingStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -38,7 +38,9 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
     min_class_x_marks: null,
     min_class_xii_marks: null,
     min_graduation_marks: null,
-    min_cgpa: null,
+    min_class_x_cgpa: null,
+    min_class_xii_cgpa: null,
+    min_graduation_cgpa: null,
     cgpa_scale: null,
     eligible_courses: [],
     eligible_passing_years: [],
@@ -62,7 +64,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
   ];
 
   const currentYear = new Date().getFullYear();
-  const graduationYears = Array.from({ length: 10 }, (_, i) => currentYear - i);
+  const graduationYears = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
 
   useEffect(() => {
     if (job) {
@@ -178,8 +180,6 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
           description: 'Job posting updated successfully'
         });
       } else {
-        // Fix: When creating a new job, ensure all required fields are provided
-        // and properly format the data for insertion
         const newJobData = {
           title: formData.title,
           company_name: formData.company_name,
@@ -190,7 +190,9 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
           min_class_x_marks: formData.min_class_x_marks,
           min_class_xii_marks: formData.min_class_xii_marks,
           min_graduation_marks: formData.min_graduation_marks,
-          min_cgpa: formData.min_cgpa,
+          min_class_x_cgpa: formData.min_class_x_cgpa,
+          min_class_xii_cgpa: formData.min_class_xii_cgpa,
+          min_graduation_cgpa: formData.min_graduation_cgpa,
           cgpa_scale: formData.cgpa_scale,
           eligible_courses: formData.eligible_courses,
           eligible_passing_years: formData.eligible_passing_years,
@@ -234,6 +236,7 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Job Basic Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="title">Job Title *</Label>
@@ -313,13 +316,14 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
 
           <Separator className="my-6" />
 
+          {/* Eligibility Criteria */}
           <div className="border rounded-md p-4 space-y-6">
             <h3 className="font-medium">Eligibility Criteria</h3>
             
             <div className="space-y-4">
-              <h4 className="text-sm font-medium">Academic Requirements</h4>
+              <h4 className="text-sm font-medium">Class X Requirements</h4>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="min_class_x_marks">Minimum Class X Marks (%)</Label>
                   <Input 
@@ -336,6 +340,24 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="min_class_x_cgpa">Minimum Class X CGPA</Label>
+                  <Input 
+                    id="min_class_x_cgpa" 
+                    name="min_class_x_cgpa" 
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.min_class_x_cgpa || ''} 
+                    onChange={handleNumberChange}
+                    placeholder="e.g. 7.5"
+                  />
+                </div>
+              </div>
+
+              <h4 className="text-sm font-medium">Class XII Requirements</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="min_class_xii_marks">Minimum Class XII Marks (%)</Label>
                   <Input 
                     id="min_class_xii_marks" 
@@ -351,6 +373,24 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
                 </div>
                 
                 <div className="space-y-2">
+                  <Label htmlFor="min_class_xii_cgpa">Minimum Class XII CGPA</Label>
+                  <Input 
+                    id="min_class_xii_cgpa" 
+                    name="min_class_xii_cgpa" 
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.min_class_xii_cgpa || ''} 
+                    onChange={handleNumberChange}
+                    placeholder="e.g. 7.5"
+                  />
+                </div>
+              </div>
+
+              <h4 className="text-sm font-medium">Graduation Requirements</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label htmlFor="min_graduation_marks">Minimum Graduation Marks (%)</Label>
                   <Input 
                     id="min_graduation_marks" 
@@ -364,38 +404,36 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
                     placeholder="e.g. 65"
                   />
                 </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
                 <div className="space-y-2">
-                  <Label htmlFor="min_cgpa">Minimum CGPA</Label>
+                  <Label htmlFor="min_graduation_cgpa">Minimum Graduation CGPA</Label>
                   <Input 
-                    id="min_cgpa" 
-                    name="min_cgpa" 
+                    id="min_graduation_cgpa" 
+                    name="min_graduation_cgpa" 
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.min_cgpa || ''} 
+                    value={formData.min_graduation_cgpa || ''} 
                     onChange={handleNumberChange}
                     placeholder="e.g. 7.5"
                   />
                 </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="cgpa_scale">CGPA Scale</Label>
-                  <Select
-                    value={formData.cgpa_scale?.toString() || ''}
-                    onValueChange={handleScaleChange}
-                  >
-                    <SelectTrigger id="cgpa_scale">
-                      <SelectValue placeholder="Select Scale" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="cgpa_scale">CGPA Scale</Label>
+                <Select
+                  value={formData.cgpa_scale?.toString() || ''}
+                  onValueChange={handleScaleChange}
+                >
+                  <SelectTrigger id="cgpa_scale">
+                    <SelectValue placeholder="Select Scale" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             

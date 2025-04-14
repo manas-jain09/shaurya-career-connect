@@ -80,10 +80,12 @@ export interface JobPosting {
   min_class_x_marks?: number | null;
   min_class_xii_marks?: number | null;
   min_graduation_marks?: number | null;
+  min_class_x_cgpa?: number | null;
+  min_class_xii_cgpa?: number | null;
+  min_graduation_cgpa?: number | null;
+  cgpa_scale?: number | null;
   eligible_courses?: string[] | null;
   eligible_passing_years?: number[] | null;
-  min_cgpa?: number | null;
-  cgpa_scale?: number | null;
   allow_backlog: boolean;
   status: JobPostingStatus;
   created_at?: string;

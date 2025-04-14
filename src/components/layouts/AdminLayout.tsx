@@ -9,7 +9,8 @@ import {
   FileCheck, 
   BarChart, 
   Settings, 
-  LogOut 
+  LogOut,
+  ClipboardList
 } from 'lucide-react';
 
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -20,6 +21,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Dashboard', path: '/admin/dashboard', icon: Home },
     { name: 'Profile Verification', path: '/admin/verification', icon: FileCheck },
     { name: 'Job Management', path: '/admin/jobs', icon: Briefcase },
+    { name: 'Applications', path: '/admin/applications', icon: ClipboardList },
     { name: 'Students', path: '/admin/students', icon: Users },
     { name: 'Reports', path: '/admin/reports', icon: BarChart },
     { name: 'Settings', path: '/admin/settings', icon: Settings },
