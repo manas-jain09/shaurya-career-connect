@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -177,12 +178,31 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
           description: 'Job posting updated successfully'
         });
       } else {
+        // Fix: When creating a new job, ensure all required fields are provided
+        // and properly format the data for insertion
+        const newJobData = {
+          title: formData.title,
+          company_name: formData.company_name,
+          location: formData.location,
+          package: formData.package,
+          description: formData.description,
+          application_deadline: formData.application_deadline,
+          min_class_x_marks: formData.min_class_x_marks,
+          min_class_xii_marks: formData.min_class_xii_marks,
+          min_graduation_marks: formData.min_graduation_marks,
+          min_cgpa: formData.min_cgpa,
+          cgpa_scale: formData.cgpa_scale,
+          eligible_courses: formData.eligible_courses,
+          eligible_passing_years: formData.eligible_passing_years,
+          allow_backlog: formData.allow_backlog,
+          status: formData.status,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
         const { error } = await supabase
           .from('job_postings')
-          .insert({
-            ...jobData,
-            created_at: new Date().toISOString(),
-          });
+          .insert(newJobData);
 
         if (error) throw error;
 

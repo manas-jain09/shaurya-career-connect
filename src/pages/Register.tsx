@@ -8,14 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { 
-  Checkbox,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Select } from '@/components/ui/select';
+import { SelectContent } from '@/components/ui/select';
+import { SelectItem } from '@/components/ui/select';
+import { SelectTrigger } from '@/components/ui/select';
+import { SelectValue } from '@/components/ui/select';
 
 const Register = () => {
   const navigate = useNavigate();
