@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,11 +48,9 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  // For multi-select
   const [courseInput, setCourseInput] = useState('');
   const [yearInput, setYearInput] = useState<string>('');
 
-  // Course options
   const courseOptions = [
     "Mechanical Engineering",
     "Electrical and Electronics Engineering (EEE)",
@@ -63,13 +60,11 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
     "Computer Engineering and Technology - CSBS"
   ];
 
-  // For calculating graduation years
   const currentYear = new Date().getFullYear();
   const graduationYears = Array.from({ length: 10 }, (_, i) => currentYear - i);
 
   useEffect(() => {
     if (job) {
-      // Format the date to YYYY-MM-DD for the input
       const formattedDate = job.application_deadline 
         ? new Date(job.application_deadline).toISOString().split('T')[0]
         : '';
@@ -154,7 +149,6 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
     try {
       setSaving(true);
       
-      // Validate required fields
       if (!formData.title || !formData.company_name || !formData.location || 
           !formData.package || !formData.description || !formData.application_deadline) {
         toast({
@@ -165,15 +159,12 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
         return;
       }
 
-      // Prepare data for saving
       const jobData = {
         ...formData,
         updated_at: new Date().toISOString()
       };
 
-      // Check if editing or creating new job
       if (job?.id) {
-        // Update existing job
         const { error } = await supabase
           .from('job_postings')
           .update(jobData)
@@ -186,13 +177,12 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
           description: 'Job posting updated successfully'
         });
       } else {
-        // Create new job
         const { error } = await supabase
           .from('job_postings')
-          .insert([{
+          .insert({
             ...jobData,
             created_at: new Date().toISOString(),
-          }]);
+          });
 
         if (error) throw error;
 
@@ -306,7 +296,6 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
           <div className="border rounded-md p-4 space-y-6">
             <h3 className="font-medium">Eligibility Criteria</h3>
             
-            {/* Academic Marks Requirements */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium">Academic Requirements</h4>
               
@@ -390,7 +379,6 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
               </div>
             </div>
             
-            {/* Course Eligibility */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium">Eligible Courses</h4>
               
@@ -437,7 +425,6 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
               </div>
             </div>
             
-            {/* Graduation Year */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium">Eligible Graduation Years</h4>
               

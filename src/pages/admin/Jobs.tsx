@@ -26,7 +26,7 @@ import {
   ArrowUpDown,
   Briefcase
 } from 'lucide-react';
-import { JobPosting } from '@/types/database.types';
+import { JobPosting, JobPostingStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import JobForm from '@/components/admin/JobForm';
@@ -76,7 +76,13 @@ const Jobs = () => {
         throw error;
       }
 
-      setJobs(data || []);
+      // Cast the status from string to JobPostingStatus
+      const typedJobs = data?.map(job => ({
+        ...job,
+        status: job.status as JobPostingStatus
+      })) || [];
+
+      setJobs(typedJobs);
     } catch (error) {
       console.error('Error fetching jobs:', error);
       toast({

@@ -17,7 +17,7 @@ import {
   XCircle,
   Clock
 } from 'lucide-react';
-import { JobPosting, JobApplication } from '@/types/database.types';
+import { JobPosting, JobApplication, JobApplicationStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 
@@ -57,7 +57,13 @@ const JobDetails: React.FC<JobDetailsProps> = ({ job, onEdit, onClose }) => {
 
       if (error) throw error;
 
-      setApplications(data || []);
+      // Cast the status from string to JobApplicationStatus
+      const typedApplications = data?.map(app => ({
+        ...app,
+        status: app.status as JobApplicationStatus
+      })) || [];
+
+      setApplications(typedApplications);
     } catch (error) {
       console.error('Error fetching applications:', error);
     } finally {
