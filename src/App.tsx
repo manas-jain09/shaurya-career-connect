@@ -20,6 +20,11 @@ import StudentNotifications from "./pages/student/Notifications";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
+import AdminVerification from "./pages/admin/Verification";
+import AdminVerificationDetail from "./pages/admin/VerificationDetail";
+import AdminJobs from "./pages/admin/Jobs";
+import AdminStudents from "./pages/admin/Students";
+import AdminReports from "./pages/admin/Reports";
 
 const queryClient = new QueryClient();
 
@@ -98,6 +103,46 @@ const AppRoutes = () => {
             <AdminDashboard />
           </ProtectedRoute>
         } 
+      />
+      <Route
+        path="/admin/verification"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminVerification />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/verification/:id"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminVerificationDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/jobs"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminJobs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/students"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminStudents />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/reports"
+        element={
+          <ProtectedRoute requiredRole="admin">
+            <AdminReports />
+          </ProtectedRoute>
+        }
       />
 
       {/* Catch-all Route */}

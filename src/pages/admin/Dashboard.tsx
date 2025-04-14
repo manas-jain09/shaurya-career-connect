@@ -46,87 +46,141 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch student stats
-        const { data: studentProfiles } = await supabase
-          .from('student_profiles')
-          .select('*');
-        
-        const totalStudents = studentProfiles?.length || 0;
-        const verifiedStudents = studentProfiles?.filter(p => p.is_verified).length || 0;
-        const pendingStudents = totalStudents - verifiedStudents;
-        
-        // Fetch pending verification requests
-        const { data: pendingVerifications } = await supabase
-          .from('student_profiles')
-          .select('*')
-          .eq('verification_status', 'pending')
-          .order('created_at', { ascending: false })
-          .limit(5);
-        
-        setVerificationRequests(pendingVerifications || []);
-        
-        // Fetch job stats
-        const { data: jobs } = await supabase
-          .from('job_postings')
-          .select('*')
-          .eq('status', 'active');
-        
-        const activeJobs = jobs?.length || 0;
-        
-        // Fetch application stats
-        const { data: applications } = await supabase
-          .from('job_applications')
-          .select('*');
-        
-        const totalApplications = applications?.length || 0;
-        
-        // Calculate placement rate (selected / total)
-        const selectedApplications = applications?.filter(a => a.status === 'selected').length || 0;
-        const placementRate = totalStudents > 0 
-          ? Math.round((selectedApplications / totalStudents) * 100) 
-          : 0;
-        
-        // Update stats data
-        setStatsData([
-          { title: 'Total Students', value: totalStudents, icon: Users, color: 'bg-blue-50 text-blue-500' },
-          { title: 'Verified Profiles', value: verifiedStudents, icon: FileCheck, color: 'bg-green-50 text-green-500' },
-          { title: 'Pending Verification', value: pendingStudents, icon: Clock, color: 'bg-yellow-50 text-yellow-500' },
-          { title: 'Active Jobs', value: activeJobs, icon: Briefcase, color: 'bg-purple-50 text-purple-500' },
-          { title: 'Total Applications', value: totalApplications, icon: CheckCircle2, color: 'bg-indigo-50 text-indigo-500' },
-          { title: 'Placement Rate', value: `${placementRate}%`, icon: BarChart2, color: 'bg-pink-50 text-pink-500' },
-        ]);
-        
-        // For now, use sample data for charts until we have enough real data
-        // In a real application, you would compute this from the database
-        setPlacementData([
-          { name: 'Computer Science', placed: 12, total: 15 },
-          { name: 'Electronics', placed: 8, total: 10 },
-          { name: 'Mechanical', placed: 6, total: 12 },
-          { name: 'Civil', placed: 4, total: 8 },
-          { name: 'Electrical', placed: 7, total: 9 },
-        ]);
-        
-        setCompanyData([
-          { name: 'TCS', value: 10 },
-          { name: 'Infosys', value: 8 },
-          { name: 'Wipro', value: 7 },
-          { name: 'Amazon', value: 4 },
-          { name: 'Microsoft', value: 3 },
-          { name: 'Others', value: 5 },
-        ]);
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchDashboardData();
   }, []);
+
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch student stats
+      const { data: studentProfiles } = await supabase
+        .from('student_profiles')
+        .select('*');
+      
+      const totalStudents = studentProfiles?.length || 0;
+      const verifiedStudents = studentProfiles?.filter(p => p.is_verified).length || 0;
+      const pendingStudents = studentProfiles?.filter(p => p.verification_status === 'pending').length || 0;
+      
+      // Fetch pending verification requests
+      const { data: pendingVerifications } = await supabase
+        .from('student_profiles')
+        .select('*')
+        .eq('verification_status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(5);
+      
+      setVerificationRequests(pendingVerifications || []);
+      
+      // Fetch job stats
+      const { data: jobs } = await supabase
+        .from('job_postings')
+        .select('*')
+        .eq('status', 'active');
+      
+      const activeJobs = jobs?.length || 0;
+      
+      // Fetch application stats
+      const { data: applications } = await supabase
+        .from('job_applications')
+        .select('*');
+      
+      const totalApplications = applications?.length || 0;
+      
+      // Calculate placement rate (selected / total)
+      const selectedApplications = applications?.filter(a => a.status === 'selected').length || 0;
+      const placementRate = totalStudents > 0 
+        ? Math.round((selectedApplications / totalStudents) * 100) 
+        : 0;
+      
+      // Update stats data
+      setStatsData([
+        { title: 'Total Students', value: totalStudents, icon: Users, color: 'bg-blue-50 text-blue-500' },
+        { title: 'Verified Profiles', value: verifiedStudents, icon: FileCheck, color: 'bg-green-50 text-green-500' },
+        { title: 'Pending Verification', value: pendingStudents, icon: Clock, color: 'bg-yellow-50 text-yellow-500' },
+        { title: 'Active Jobs', value: activeJobs, icon: Briefcase, color: 'bg-purple-50 text-purple-500' },
+        { title: 'Total Applications', value: totalApplications, icon: CheckCircle2, color: 'bg-indigo-50 text-indigo-500' },
+        { title: 'Placement Rate', value: `${placementRate}%`, icon: BarChart2, color: 'bg-pink-50 text-pink-500' },
+      ]);
+      
+      // Fetch data for department-wise placement chart
+      const { data: graduationData } = await supabase
+        .from('graduation_details')
+        .select(`
+          course,
+          student_id
+        `);
+      
+      // Get all applications to determine placed students
+      const { data: appData } = await supabase
+        .from('job_applications')
+        .select('student_id, status');
+      
+      // Map of student IDs who are placed (selected)
+      const placedStudents = new Set(
+        appData
+          ?.filter(app => app.status === 'selected')
+          .map(app => app.student_id) || []
+      );
+
+      // Process graduation data to get department stats
+      const departmentCounts: Record<string, { placed: number, total: number }> = {};
+      
+      graduationData?.forEach(grad => {
+        if (!departmentCounts[grad.course]) {
+          departmentCounts[grad.course] = { placed: 0, total: 0 };
+        }
+        
+        departmentCounts[grad.course].total++;
+        
+        if (placedStudents.has(grad.student_id)) {
+          departmentCounts[grad.course].placed++;
+        }
+      });
+
+      // Convert to array format for chart
+      const deptData = Object.keys(departmentCounts).map(course => ({
+        name: course,
+        placed: departmentCounts[course].placed,
+        total: departmentCounts[course].total
+      }));
+      
+      setPlacementData(deptData);
+      
+      // Fetch data for company-wise placement chart
+      const { data: selectedApps } = await supabase
+        .from('job_applications')
+        .select(`
+          job_id,
+          job:job_id(company_name)
+        `)
+        .eq('status', 'selected');
+      
+      // Count placements by company
+      const companyCounts: Record<string, number> = {};
+      
+      selectedApps?.forEach(app => {
+        const company = app.job?.company_name || 'Unknown';
+        
+        if (!companyCounts[company]) {
+          companyCounts[company] = 0;
+        }
+        
+        companyCounts[company]++;
+      });
+
+      // Convert to array format for chart
+      const compData = Object.keys(companyCounts).map(company => ({
+        name: company,
+        value: companyCounts[company]
+      }));
+      
+      setCompanyData(compData);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <AdminLayout>
