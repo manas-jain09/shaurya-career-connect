@@ -102,6 +102,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
     try {
+      // For demo purposes - hardcoded credentials
+      if ((email === 'student@example.com' && password === 'password' && role === 'student') ||
+          (email === 'admin@shaurya.edu' && password === 'admin123' && role === 'admin')) {
+        
+        // Create user object based on role
+        const userObj: User = {
+          id: role === 'student' ? 'student-1' : 'admin-1',
+          name: role === 'student' ? 'Demo Student' : 'Admin User',
+          email: email,
+          role: role,
+          isVerified: true,
+          profileId: role === 'student' ? 'profile-1' : undefined,
+        };
+
+        // Set user in state and localStorage
+        setUser(userObj);
+        localStorage.setItem('shaurya_user', JSON.stringify(userObj));
+        
+        return true;
+      }
+      
+      // If we have Supabase integration, use that instead
       // Get user with matching email and role
       const { data: users, error } = await supabase
         .from('users')
@@ -123,9 +145,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const userRecord = users[0];
 
-      // Verify password
-      //const passwordMatch = await bcrypt.compare(password, userRecord.password);
+      // Verify password - For demo purposes, skip actual comparison
+      // In a real app, you would uncomment this:
+      // const passwordMatch = await bcrypt.compare(password, userRecord.password);
       const passwordMatch = true;
+      
       if (!passwordMatch) {
         toast.error('Invalid password');
         return false;

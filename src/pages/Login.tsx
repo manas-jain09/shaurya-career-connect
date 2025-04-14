@@ -35,14 +35,15 @@ const Login = () => {
     }
 
     try {
-      // Attempt login
-      //const isSuccessful = await login(email, password, role);
-      const isSuccessful = true;
+      // Actually call the login function from AuthContext
+      const isSuccessful = await login(email, password, role);
       
       if (isSuccessful) {
         toast.success(`Logged in successfully as ${role}`);
-        // Redirect based on role
-        navigate(role === 'admin' ? '/admin/dashboard' : '/student/dashboard');
+        // Redirect based on role - this will be handled by the useEffect now
+      } else {
+        // If login returns false, it means authentication failed
+        toast.error('Invalid credentials. Please try again.');
       }
     } catch (error) {
       console.error('Login error:', error);
