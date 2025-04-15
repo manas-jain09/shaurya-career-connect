@@ -74,10 +74,25 @@ const ProfilePage = () => {
           .update({ marksheet_url: fileUrl })
           .eq('student_id', profile.id);
       } else if (type === 'graduation') {
-        await supabase
-          .from('graduation_details')
-          .update({ marksheet_url: fileUrl })
-          .eq('student_id', profile.id);
+        if (graduation) {
+          await supabase
+            .from('graduation_details')
+            .update({ marksheet_url: fileUrl })
+            .eq('student_id', profile.id);
+        } else {
+          // Create new graduation details if they don't exist
+          await supabase
+            .from('graduation_details')
+            .insert({
+              student_id: profile.id,
+              college_name: 'Please update',
+              course: 'Please update',
+              marks: 0,
+              passing_year: new Date().getFullYear(),
+              has_backlog: false,
+              marksheet_url: fileUrl
+            });
+        }
       }
 
       await refreshData();
@@ -442,6 +457,12 @@ const ProfilePage = () => {
                       {graduation.has_backlog ? "Has Backlog" : "No Backlog"}
                     </p>
                   </div>
+                  {graduation.division && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Division</p>
+                      <p>{graduation.division}</p>
+                    </div>
+                  )}
                 </div>
                 
                 <Separator className="my-4" />
@@ -488,7 +509,20 @@ const ProfilePage = () => {
                 </div>
               </div>
             ) : (
-              <p className="text-gray-500 italic">No Graduation details available. Please add your details.</p>
+              <div>
+                <p className="text-gray-500 italic mb-4">No Graduation details available. Please upload your marksheet to add your details.</p>
+                <label className="flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary">
+                  <Upload size={16} />
+                  <span>Upload Marksheet</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'graduation')}
+                    disabled={uploading}
+                  />
+                </label>
+              </div>
             )}
           </CardContent>
         </Card>

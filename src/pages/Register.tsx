@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -22,7 +21,7 @@ import {
   TabsList, 
   TabsTrigger 
 } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { GraduationDetails } from '@/types/database.types';
@@ -30,9 +29,8 @@ import { uploadFile } from '@/utils/helpers';
 
 const Register = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
-  const { toast } = useToast();
-  const [activeStep, setActiveStep] = useState(0);
+  const { register: registerUser } = useAuth();
+  
   const [isLoading, setIsLoading] = useState(false);
   
   // Personal Information
@@ -74,6 +72,7 @@ const Register = () => {
   const [hasBacklog, setHasBacklog] = useState(false);
   const [gradMarksheetFile, setGradMarksheetFile] = useState<File | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [activeStep, setActiveStep] = useState(0);
 
   // Course and Division Options
   const courseOptions = [
@@ -131,18 +130,16 @@ const Register = () => {
 
   const validatePersonalInfo = () => {
     if (!name || !email || !phone || !dob || !gender || !password) {
-      toast({
-        title: 'Error',
-        description: 'Please fill all required fields',
+      toast('Error', {
+        title: 'Please fill all required fields',
         variant: 'destructive'
       });
       return false;
     }
     
     if (password !== confirmPassword) {
-      toast({
-        title: 'Error',
-        description: 'Passwords do not match',
+      toast('Error', {
+        title: 'Passwords do not match',
         variant: 'destructive'
       });
       return false;
@@ -153,37 +150,32 @@ const Register = () => {
 
   const validateEducationInfo = () => {
     if (!xSchool || !xBoard || !xMarks || !xPassingYear) {
-      toast({
-        title: 'Error',
-        description: 'Please fill all Class X details',
+      toast('Error', {
+        title: 'Please fill all Class X details',
         variant: 'destructive'
       });
       return false;
     }
     
     if (!xiiSchool || !xiiBoard || !xiiMarks || !xiiPassingYear) {
-      toast({
-        title: 'Error',
-        description: 'Please fill all Class XII details',
+      toast('Error', {
+        title: 'Please fill all Class XII details',
         variant: 'destructive'
       });
       return false;
     }
     
     if (!gradCollege || !gradCourse || !gradYear || !gradMarks) {
-      toast({
-        title: 'Error',
-        description: 'Please fill all Graduation details',
+      toast('Error', {
+        title: 'Please fill all Graduation details',
         variant: 'destructive'
       });
       return false;
     }
     
-    // Validate division if course is selected
     if (gradCourse && getDivisionOptions(gradCourse).length > 0 && !gradDivision) {
-      toast({
-        title: 'Error',
-        description: 'Please select a division for your course',
+      toast('Error', {
+        title: 'Please select a division for your course',
         variant: 'destructive'
       });
       return false;
@@ -194,9 +186,8 @@ const Register = () => {
 
   const validateUploads = () => {
     if (!xMarksheetFile || !xiiMarksheetFile || !gradMarksheetFile || !resumeFile) {
-      toast({
-        title: 'Error',
-        description: 'Please upload all required documents',
+      toast('Error', {
+        title: 'Please upload all required documents',
         variant: 'destructive'
       });
       return false;
@@ -224,19 +215,16 @@ const Register = () => {
     setIsLoading(true);
     
     try {
-      // Step 1: Register user in users table
-      const userId = await register(email, password, 'student');
+      const userId = await registerUser(email, password, 'student');
       if (!userId) {
         setIsLoading(false);
         return;
       }
 
-      // Parse name into first and last name
       const nameParts = name.trim().split(' ');
       const firstName = nameParts[0] || '';
       const lastName = nameParts.slice(1).join(' ') || '';
 
-      // Step 2: Create student profile
       const { data: profileData, error: profileError } = await supabase
         .from('student_profiles')
         .insert({
@@ -259,10 +247,8 @@ const Register = () => {
 
       const studentId = profileData.id;
 
-      // Upload files and get URLs
       const uploadPromises = [];
 
-      // Upload Class X marksheet
       if (xMarksheetFile) {
         uploadPromises.push(
           uploadFile(xMarksheetFile, 'student_documents', `${studentId}/class_x`)
@@ -283,7 +269,6 @@ const Register = () => {
         );
       }
 
-      // Upload Class XII marksheet
       if (xiiMarksheetFile) {
         uploadPromises.push(
           uploadFile(xiiMarksheetFile, 'student_documents', `${studentId}/class_xii`)
@@ -304,14 +289,13 @@ const Register = () => {
         );
       }
 
-      // Upload Graduation marksheet
       if (gradMarksheetFile) {
         uploadPromises.push(
           uploadFile(gradMarksheetFile, 'student_documents', `${studentId}/graduation`)
             .then(async (fileUrl) => {
               if (!fileUrl) throw new Error('Failed to upload Graduation marksheet');
               
-              await supabase.from('graduation_details').insert({
+              const { error: graduationError } = await supabase.from('graduation_details').insert({
                 student_id: studentId,
                 college_name: gradCollege,
                 course: gradCourse,
@@ -323,11 +307,15 @@ const Register = () => {
                 has_backlog: hasBacklog,
                 marksheet_url: fileUrl
               });
+              
+              if (graduationError) {
+                console.error('Error inserting graduation details:', graduationError);
+                throw new Error('Failed to save graduation details');
+              }
             })
         );
       }
 
-      // Upload Resume
       if (resumeFile) {
         uploadPromises.push(
           uploadFile(resumeFile, 'student_documents', `${studentId}/resume`)
@@ -342,10 +330,8 @@ const Register = () => {
         );
       }
 
-      // Wait for all uploads and database insertions to complete
       await Promise.all(uploadPromises);
 
-      // Create notification for admin
       await supabase.from('notifications').insert({
         user_id: userId,
         title: 'New Student Registration',
@@ -354,17 +340,14 @@ const Register = () => {
       });
 
       setIsLoading(false);
-      toast({
-        title: 'Success',
-        description: 'Registration successful! Please log in after admin verification.',
-        variant: 'default'
+      toast('Success', {
+        description: 'Registration successful! Please log in after admin verification.'
       });
       navigate('/login');
     } catch (error) {
       console.error('Registration error:', error);
       setIsLoading(false);
-      toast({
-        title: 'Error',
+      toast('Error', {
         description: 'Failed to complete registration. Please try again.',
         variant: 'destructive'
       });

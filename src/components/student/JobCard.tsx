@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -21,62 +20,53 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isApplying, setIsApplying] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const isExpired = new Date(job.application_deadline) < new Date();
 
   const handleApply = async () => {
-    if (!user?.profileId) {
-      toast({
-        title: 'Profile Required',
-        description: 'Please complete your profile before applying',
-        variant: 'destructive',
-      });
-      navigate('/student/profile');
-      return;
-    }
-
-    if (!isProfileVerified) {
-      toast({
-        title: 'Profile Not Verified',
-        description: 'Your profile must be verified by admin before you can apply',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    setIsSubmitting(true);
     try {
-      setIsApplying(true);
-      
-      // Fixed: Ensuring all required fields are explicitly set
-      const application = {
-        job_id: job.id!,
-        student_id: user.profileId,
-        status: 'applied',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      } as JobApplication;
-
-      const { error } = await supabase
+      const { data: existingApplication, error: fetchError } = await supabase
         .from('job_applications')
-        .insert(application);
+        .select('id')
+        .eq('job_id', job.id)
+        .eq('student_id', user?.profileId || '')
+        .single();
 
-      if (error) throw error;
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw fetchError;
+      }
 
-      toast({
-        title: 'Application Submitted',
-        description: 'Your application has been submitted successfully',
+      if (existingApplication) {
+        toast.info('You have already applied for this job');
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from('job_applications')
+        .insert({
+          job_id: job.id || '',
+          student_id: user?.profileId || '',
+          status: 'applied'
+        });
+
+      if (insertError) throw insertError;
+
+      toast.success('Application submitted successfully');
+      
+      await supabase.from('notifications').insert({
+        user_id: user?.id || '',
+        title: 'Job Application Submitted',
+        message: `You have successfully applied for ${job.title} at ${job.company_name}.`,
+        is_read: false
       });
 
-      onApply();
     } catch (error) {
       console.error('Error applying for job:', error);
-      toast({
-        title: 'Application Failed',
-        description: 'Failed to submit your application. Please try again.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to submit application');
     } finally {
-      setIsApplying(false);
+      setIsSubmitting(false);
     }
   };
 

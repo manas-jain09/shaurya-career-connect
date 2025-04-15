@@ -66,14 +66,19 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
 
       if (!classXIIError) setClassXII(classXIIData);
 
-      // Fetch Graduation details
+      // Fetch Graduation details with explicit error handling
       const { data: graduationData, error: graduationError } = await supabase
         .from('graduation_details')
         .select('*')
         .eq('student_id', studentProfileId)
         .single();
 
-      if (!graduationError) setGraduation(graduationData);
+      if (!graduationError) {
+        setGraduation(graduationData);
+      } else {
+        console.log('No graduation details found or error:', graduationError);
+        setGraduation(null);
+      }
 
       // Fetch Resume
       const { data: resumeData, error: resumeError } = await supabase
