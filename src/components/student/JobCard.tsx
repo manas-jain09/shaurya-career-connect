@@ -62,11 +62,10 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
         is_read: false
       });
 
+      onApply();
     } catch (error) {
       console.error('Error applying for job:', error);
-      toast('Failed to submit application', {
-        description: 'Please try again later'
-      });
+      toast('Failed to submit application');
     } finally {
       setIsSubmitting(false);
     }

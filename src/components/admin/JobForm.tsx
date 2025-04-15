@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { JobPosting, JobPostingStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -162,8 +161,12 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
         return;
       }
 
+      console.log("Attempting to save job data:", formData);
+
       const jobData = {
         ...formData,
+        eligible_courses: formData.eligible_courses || [],
+        eligible_passing_years: formData.eligible_passing_years || [],
         updated_at: new Date().toISOString()
       };
 
@@ -194,20 +197,23 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
           min_class_xii_cgpa: formData.min_class_xii_cgpa,
           min_graduation_cgpa: formData.min_graduation_cgpa,
           cgpa_scale: formData.cgpa_scale,
-          eligible_courses: formData.eligible_courses,
-          eligible_passing_years: formData.eligible_passing_years,
+          eligible_courses: formData.eligible_courses || [],
+          eligible_passing_years: formData.eligible_passing_years || [],
           allow_backlog: formData.allow_backlog,
           status: formData.status,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
 
-        const { error } = await supabase
+        console.log("Inserting new job:", newJobData);
+        const { error, data } = await supabase
           .from('job_postings')
-          .insert(newJobData);
+          .insert(newJobData)
+          .select();
 
         if (error) throw error;
 
+        console.log("Job created successfully:", data);
         toast({
           title: 'Success',
           description: 'Job posting created successfully'

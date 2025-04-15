@@ -214,13 +214,19 @@ export type Database = {
         Row: {
           allow_backlog: boolean
           application_deadline: string
+          cgpa_scale: number | null
           company_name: string
           created_at: string
           description: string
+          eligible_courses: string[] | null
+          eligible_passing_years: number[] | null
           id: string
           location: string
+          min_class_x_cgpa: number | null
           min_class_x_marks: number | null
+          min_class_xii_cgpa: number | null
           min_class_xii_marks: number | null
+          min_graduation_cgpa: number | null
           min_graduation_marks: number | null
           package: string
           status: string
@@ -230,13 +236,19 @@ export type Database = {
         Insert: {
           allow_backlog?: boolean
           application_deadline: string
+          cgpa_scale?: number | null
           company_name: string
           created_at?: string
           description: string
+          eligible_courses?: string[] | null
+          eligible_passing_years?: number[] | null
           id?: string
           location: string
+          min_class_x_cgpa?: number | null
           min_class_x_marks?: number | null
+          min_class_xii_cgpa?: number | null
           min_class_xii_marks?: number | null
+          min_graduation_cgpa?: number | null
           min_graduation_marks?: number | null
           package: string
           status?: string
@@ -246,13 +258,19 @@ export type Database = {
         Update: {
           allow_backlog?: boolean
           application_deadline?: string
+          cgpa_scale?: number | null
           company_name?: string
           created_at?: string
           description?: string
+          eligible_courses?: string[] | null
+          eligible_passing_years?: number[] | null
           id?: string
           location?: string
+          min_class_x_cgpa?: number | null
           min_class_x_marks?: number | null
+          min_class_xii_cgpa?: number | null
           min_class_xii_marks?: number | null
+          min_graduation_cgpa?: number | null
           min_graduation_marks?: number | null
           package?: string
           status?: string
