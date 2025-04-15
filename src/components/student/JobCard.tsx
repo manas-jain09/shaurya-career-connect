@@ -47,13 +47,14 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
     try {
       setIsApplying(true);
       
-      const application: Partial<JobApplication> = {
+      // Fixed: Ensuring all required fields are explicitly set
+      const application = {
         job_id: job.id!,
         student_id: user.profileId,
         status: 'applied',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      };
+      } as JobApplication;
 
       const { error } = await supabase
         .from('job_applications')

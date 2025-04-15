@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -15,14 +16,22 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { GraduationDetails } from '@/types/database.types';
+import { uploadFile } from '@/utils/helpers';
 
 const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { toast } = useToast();
   const [activeStep, setActiveStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   
@@ -122,12 +131,20 @@ const Register = () => {
 
   const validatePersonalInfo = () => {
     if (!name || !email || !phone || !dob || !gender || !password) {
-      toast.error('Please fill all required fields');
+      toast({
+        title: 'Error',
+        description: 'Please fill all required fields',
+        variant: 'destructive'
+      });
       return false;
     }
     
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast({
+        title: 'Error',
+        description: 'Passwords do not match',
+        variant: 'destructive'
+      });
       return false;
     }
     
@@ -136,23 +153,39 @@ const Register = () => {
 
   const validateEducationInfo = () => {
     if (!xSchool || !xBoard || !xMarks || !xPassingYear) {
-      toast.error('Please fill all Class X details');
+      toast({
+        title: 'Error',
+        description: 'Please fill all Class X details',
+        variant: 'destructive'
+      });
       return false;
     }
     
     if (!xiiSchool || !xiiBoard || !xiiMarks || !xiiPassingYear) {
-      toast.error('Please fill all Class XII details');
+      toast({
+        title: 'Error',
+        description: 'Please fill all Class XII details',
+        variant: 'destructive'
+      });
       return false;
     }
     
     if (!gradCollege || !gradCourse || !gradYear || !gradMarks) {
-      toast.error('Please fill all Graduation details');
+      toast({
+        title: 'Error',
+        description: 'Please fill all Graduation details',
+        variant: 'destructive'
+      });
       return false;
     }
     
     // Validate division if course is selected
     if (gradCourse && getDivisionOptions(gradCourse).length > 0 && !gradDivision) {
-      toast.error('Please select a division for your course');
+      toast({
+        title: 'Error',
+        description: 'Please select a division for your course',
+        variant: 'destructive'
+      });
       return false;
     }
     
@@ -161,7 +194,11 @@ const Register = () => {
 
   const validateUploads = () => {
     if (!xMarksheetFile || !xiiMarksheetFile || !gradMarksheetFile || !resumeFile) {
-      toast.error('Please upload all required documents');
+      toast({
+        title: 'Error',
+        description: 'Please upload all required documents',
+        variant: 'destructive'
+      });
       return false;
     }
     
@@ -317,12 +354,20 @@ const Register = () => {
       });
 
       setIsLoading(false);
-      toast.success('Registration successful! Please log in after admin verification.');
+      toast({
+        title: 'Success',
+        description: 'Registration successful! Please log in after admin verification.',
+        variant: 'default'
+      });
       navigate('/login');
     } catch (error) {
       console.error('Registration error:', error);
       setIsLoading(false);
-      toast.error('Failed to complete registration. Please try again.');
+      toast({
+        title: 'Error',
+        description: 'Failed to complete registration. Please try again.',
+        variant: 'destructive'
+      });
     }
   };
 
@@ -566,7 +611,7 @@ const Register = () => {
                         <Checkbox
                           id="xiiIsCGPA"
                           checked={xiiIsCGPA}
-                          onCheckedChange={(e) => setXiiIsCGPA(checked === true)}
+                          onCheckedChange={(checked) => setXiiIsCGPA(checked === true)}
                         />
                         <Label htmlFor="xiiIsCGPA">CGPA (instead of percentage)</Label>
                       </div>
