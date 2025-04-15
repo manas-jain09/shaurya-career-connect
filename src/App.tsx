@@ -28,7 +28,7 @@ function App() {
       <ThemeProvider initialTheme={theme as 'light' | 'dark'}>
         <Router>
           <Routes>
-            <Route path="/" element={<Index />} />
+            <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             
