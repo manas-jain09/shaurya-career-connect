@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { JobPosting, JobApplication } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface JobCardProps {
   job: JobPosting;
@@ -46,7 +47,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
       const { error: insertError } = await supabase
         .from('job_applications')
         .insert({
-          job_id: job.id || '',
+          job_id: job.id,
           student_id: user?.profileId || '',
           status: 'applied'
         });

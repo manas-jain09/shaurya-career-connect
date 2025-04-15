@@ -115,6 +115,7 @@ export type Database = {
           college_name: string
           course: string
           created_at: string
+          division: string | null
           has_backlog: boolean
           id: string
           is_cgpa: boolean
@@ -129,6 +130,7 @@ export type Database = {
           college_name: string
           course: string
           created_at?: string
+          division?: string | null
           has_backlog?: boolean
           id?: string
           is_cgpa?: boolean
@@ -143,6 +145,7 @@ export type Database = {
           college_name?: string
           course?: string
           created_at?: string
+          division?: string | null
           has_backlog?: boolean
           id?: string
           is_cgpa?: boolean
