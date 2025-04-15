@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -24,7 +25,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <ThemeProvider initialTheme={theme}>
+      <ThemeProvider initialTheme={theme as 'light' | 'dark'}>
         <Router>
           <Routes>
             <Route path="/" element={<Index />} />

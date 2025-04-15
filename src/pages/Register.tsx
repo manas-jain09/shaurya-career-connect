@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { uploadFile } from '@/utils/helpers';
-import { supabase } from '@/integrations/supabase/client';
+import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from 'sonner';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select } from '@/components/ui/select';
-import { SelectContent } from '@/components/ui/select';
-import { SelectItem } from '@/components/ui/select';
-import { SelectTrigger } from '@/components/ui/select';
-import { SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { GraduationDetails } from '@/types/database.types';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -561,7 +566,7 @@ const Register = () => {
                         <Checkbox
                           id="xiiIsCGPA"
                           checked={xiiIsCGPA}
-                          onCheckedChange={(checked) => setXiiIsCGPA(checked === true)}
+                          onCheckedChange={(e) => setXiiIsCGPA(checked === true)}
                         />
                         <Label htmlFor="xiiIsCGPA">CGPA (instead of percentage)</Label>
                       </div>
@@ -807,9 +812,9 @@ const Register = () => {
         <div className="mt-6 text-center text-sm">
           <p className="text-gray-600">
             Already have an account?{' '}
-            <a href="/login" className="text-blue-600 hover:underline">
+            <Link to="/login" className="text-blue-600 hover:underline">
               Login here
-            </a>
+            </Link>
           </p>
         </div>
       </div>
