@@ -58,7 +58,6 @@ const Login = () => {
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blue-600">Shaurya</h1>
-          <p className="text-gray-600">Placement Automation Platform</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
