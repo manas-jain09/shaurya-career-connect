@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +11,9 @@ import { JobPosting, JobApplication, JobPostingStatus, JobApplicationStatus } fr
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
-import { Calendar, MapPin, Building, CheckCircle, XCircle, Search, AlertCircle } from 'lucide-react';
+import { Calendar, MapPin, Building, CheckCircle, XCircle, Search, AlertCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import JobCard from '@/components/student/JobCard';
 
 const JobsPage = () => {
   const { user } = useAuth();
@@ -26,6 +28,7 @@ const JobsPage = () => {
   const [applying, setApplying] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const jobsPerPage = 5;
+  const [hasFlaggedSections, setHasFlaggedSections] = useState(false);
 
   // Fetch jobs
   const fetchJobs = async () => {
@@ -63,22 +66,35 @@ const JobsPage = () => {
       setJobs(typedJobs);
       setApplications(typedApplications);
       
+      // Check for flagged sections
+      if (profile && profile.flagged_sections && profile.flagged_sections.length > 0) {
+        setHasFlaggedSections(true);
+      } else {
+        setHasFlaggedSections(false);
+      }
+
       // Check eligibility for each job
       if (profile) {
         const eligibilityPromises = typedJobs.map(async (job) => {
-          // Use the database function to check eligibility
-          const { data, error } = await supabase
-            .rpc('check_job_eligibility', {
-              p_student_id: profile.id,
-              p_job_id: job.id
-            });
+          // Only check eligibility if profile is verified and has no flagged sections
+          if (profile.is_verified && !hasFlaggedSections) {
+            // Use the database function to check eligibility
+            const { data, error } = await supabase
+              .rpc('check_job_eligibility', {
+                p_student_id: profile.id,
+                p_job_id: job.id
+              });
+              
+            if (error) {
+              console.error('Error checking eligibility:', error);
+              return { jobId: job.id, eligible: false };
+            }
             
-          if (error) {
-            console.error('Error checking eligibility:', error);
+            return { jobId: job.id, eligible: data };
+          } else {
+            // If profile is not verified or has flagged sections, student is not eligible
             return { jobId: job.id, eligible: false };
           }
-          
-          return { jobId: job.id, eligible: data };
         });
         
         const eligibilityResults = await Promise.all(eligibilityPromises);
@@ -91,7 +107,7 @@ const JobsPage = () => {
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);
-      toast.error('Failed to load job listings');
+      toast('Failed to load job listings');
     } finally {
       setLoading(false);
     }
@@ -202,6 +218,34 @@ const JobsPage = () => {
           <p className="text-gray-600">Browse and apply for available job opportunities</p>
         </div>
         
+        {!profile?.is_verified && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+            <div className="flex items-start">
+              <AlertTriangle className="text-amber-500 mr-2 mt-0.5" size={20} />
+              <div>
+                <h3 className="font-medium text-amber-800">Profile Not Verified</h3>
+                <p className="text-amber-700 text-sm mt-1">
+                  Your profile needs to be verified before you can apply for jobs. Please complete your profile and wait for admin verification.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {profile?.is_verified && hasFlaggedSections && (
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+            <div className="flex items-start">
+              <AlertTriangle className="text-amber-500 mr-2 mt-0.5" size={20} />
+              <div>
+                <h3 className="font-medium text-amber-800">Profile Has Flagged Sections</h3>
+                <p className="text-amber-700 text-sm mt-1">
+                  Some sections of your profile have been flagged during verification. This may limit your eligibility for job applications.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Search and Filter */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
@@ -227,138 +271,16 @@ const JobsPage = () => {
                 {currentJobs.map((job) => {
                   const applicationStatus = getApplicationStatus(job.id || '');
                   const isEligible = eligibilityStatus[job.id || ''] === true;
-                  const isApplicationDeadlinePassed = new Date(job.application_deadline) < new Date();
                   
                   return (
-                    <Card key={job.id} className="relative overflow-hidden">
-                      {isDeadlineNear(job.application_deadline) && !isApplicationDeadlinePassed && (
-                        <div className="absolute top-0 right-0 bg-yellow-100 px-2 py-1 text-xs text-yellow-800 font-medium rounded-bl-md">
-                          Deadline Soon
-                        </div>
-                      )}
-                      <CardContent className="p-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                          <div className="lg:col-span-2">
-                            <h3 className="font-semibold text-lg text-gray-900">{job.title}</h3>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-gray-600 text-sm">
-                              <div className="flex items-center">
-                                <Building size={16} className="mr-1" />
-                                {job.company_name}
-                              </div>
-                              <div className="flex items-center">
-                                <MapPin size={16} className="mr-1" />
-                                {job.location}
-                              </div>
-                              <div className="flex items-center">
-                                <Calendar size={16} className="mr-1" />
-                                Deadline: {formatDate(job.application_deadline)}
-                              </div>
-                            </div>
-                            
-                            <div className="mt-4">
-                              <p className="text-sm text-gray-600 line-clamp-2">{job.description}</p>
-                            </div>
-                            
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              {applicationStatus && (
-                                <Badge className={
-                                  applicationStatus === 'shortlisted' ? 'bg-green-100 text-green-800' :
-                                  applicationStatus === 'rejected' ? 'bg-red-100 text-red-800' : 
-                                  'bg-blue-100 text-blue-800'
-                                }>
-                                  {applicationStatus.replace('_', ' ').charAt(0).toUpperCase() + applicationStatus.replace('_', ' ').slice(1)}
-                                </Badge>
-                              )}
-                              
-                              <Badge className={isEligible ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                                {isEligible ? 'Eligible' : 'Not Eligible'}
-                              </Badge>
-                              
-                              {isApplicationDeadlinePassed && (
-                                <Badge variant="outline" className="border-red-200 text-red-700">
-                                  Deadline Passed
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          
-                          <div className="flex flex-col justify-between lg:items-end">
-                            <div className="text-right">
-                              <div className="font-semibold text-lg text-shaurya-primary">{job.package}</div>
-                              <div className="text-sm text-gray-500">Package</div>
-                            </div>
-                            
-                            <div className="flex justify-end mt-4 lg:mt-0">
-                              <Dialog open={openDialog && selectedJob?.id === job.id} onOpenChange={setOpenDialog}>
-                                <DialogTrigger asChild>
-                                  <Button 
-                                    onClick={() => setSelectedJob(job)}
-                                    disabled={!!applicationStatus || !isEligible || isApplicationDeadlinePassed}
-                                  >
-                                    {applicationStatus ? 'Applied' : 'Apply Now'}
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
-                                    <DialogDescription>
-                                      You are about to apply for the position of {selectedJob?.title} at {selectedJob?.company_name}.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  
-                                  <div className="space-y-4 my-4">
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">Company:</span>
-                                      <span>{selectedJob?.company_name}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">Location:</span>
-                                      <span>{selectedJob?.location}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">Package:</span>
-                                      <span>{selectedJob?.package}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">Application Deadline:</span>
-                                      <span>{selectedJob?.application_deadline ? formatDate(selectedJob.application_deadline) : ''}</span>
-                                    </div>
-                                    
-                                    <div className="bg-yellow-50 p-4 rounded-md">
-                                      <div className="flex items-start">
-                                        <AlertCircle className="text-yellow-500 mr-2 mt-0.5" size={18} />
-                                        <div>
-                                          <p className="font-medium text-yellow-700">Important:</p>
-                                          <p className="text-sm text-yellow-600">
-                                            By applying, you confirm that all information in your profile is accurate and complete.
-                                            Your application and details will be shared with the company.
-                                          </p>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <DialogFooter>
-                                    <Button 
-                                      variant="outline" 
-                                      onClick={() => setOpenDialog(false)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                    <Button 
-                                      onClick={handleApply}
-                                      disabled={applying}
-                                    >
-                                      {applying ? 'Submitting...' : 'Confirm Application'}
-                                    </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <JobCard 
+                      key={job.id}
+                      job={job}
+                      isApplied={!!applicationStatus}
+                      isProfileVerified={!!profile?.is_verified}
+                      isFlaggedProfile={hasFlaggedSections}
+                      onApply={fetchJobs}
+                    />
                   );
                 })}
                 
@@ -410,6 +332,65 @@ const JobsPage = () => {
           </>
         )}
       </div>
+
+      {/* Apply Job Dialog */}
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
+            <DialogDescription>
+              You are about to apply for the position of {selectedJob?.title} at {selectedJob?.company_name}.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 my-4">
+            <div className="flex flex-col">
+              <span className="font-medium">Company:</span>
+              <span>{selectedJob?.company_name}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-medium">Location:</span>
+              <span>{selectedJob?.location}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-medium">Package:</span>
+              <span>{selectedJob?.package}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-medium">Application Deadline:</span>
+              <span>{selectedJob?.application_deadline ? formatDate(selectedJob.application_deadline) : ''}</span>
+            </div>
+            
+            <div className="bg-yellow-50 p-4 rounded-md">
+              <div className="flex items-start">
+                <AlertCircle className="text-yellow-500 mr-2 mt-0.5" size={18} />
+                <div>
+                  <p className="font-medium text-yellow-700">Important:</p>
+                  <p className="text-sm text-yellow-600">
+                    By applying, you confirm that all information in your profile is accurate and complete.
+                    Your application and details will be shared with the company.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setOpenDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleApply}
+              disabled={applying}
+            >
+              {applying ? 'Submitting...' : 'Confirm Application'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </StudentLayout>
   );
 };

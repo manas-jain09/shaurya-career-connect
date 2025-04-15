@@ -11,6 +11,7 @@ export interface StudentProfile {
   is_verified: boolean;
   verification_status: string;
   verification_notes?: string;
+  flagged_sections?: string[];
   created_at?: string;
   updated_at?: string;
 }

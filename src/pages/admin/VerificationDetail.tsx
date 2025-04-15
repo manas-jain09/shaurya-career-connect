@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -18,7 +19,8 @@ import {
   MapPin,
   FileText,
   ArrowLeft,
-  ExternalLink
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   StudentProfile, 
@@ -40,6 +42,7 @@ const VerificationDetail = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [notes, setNotes] = useState('');
+  const [flaggedSections, setFlaggedSections] = useState<string[]>([]);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -62,6 +65,11 @@ const VerificationDetail = () => {
       if (profileError) throw profileError;
       setProfile(profileData);
       setNotes(profileData.verification_notes || '');
+      
+      // Set flagged sections if they exist
+      if (profileData.flagged_sections) {
+        setFlaggedSections(profileData.flagged_sections);
+      }
 
       // Fetch Class X details
       const { data: classXData } = await supabase
@@ -123,6 +131,7 @@ const VerificationDetail = () => {
           verification_status: status,
           is_verified: approved,
           verification_notes: notes,
+          flagged_sections: flaggedSections,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
@@ -134,9 +143,17 @@ const VerificationDetail = () => {
         ? 'Profile Verification Approved' 
         : 'Profile Verification Rejected';
       
-      const notificationMsg = approved
-        ? 'Your profile has been verified successfully. You can now apply for job postings.'
-        : `Your profile verification was not approved. Reason: ${notes || 'No specific reason provided.'}`;
+      let notificationMsg = '';
+      
+      if (approved) {
+        if (flaggedSections.length > 0) {
+          notificationMsg = `Your profile has been verified with some concerns in the following sections: ${flaggedSections.join(', ')}. This may limit your eligibility for some job postings.`;
+        } else {
+          notificationMsg = 'Your profile has been verified successfully. You can now apply for job postings.';
+        }
+      } else {
+        notificationMsg = `Your profile verification was not approved. Reason: ${notes || 'No specific reason provided.'}`;
+      }
 
       await supabase.from('notifications').insert({
         user_id: profile.user_id,
@@ -161,6 +178,16 @@ const VerificationDetail = () => {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleToggleFlag = (section: string) => {
+    setFlaggedSections(prev => {
+      if (prev.includes(section)) {
+        return prev.filter(s => s !== section);
+      } else {
+        return [...prev, section];
+      }
+    });
   };
 
   if (loading) {
@@ -296,9 +323,24 @@ const VerificationDetail = () => {
               <div className="mt-4">
                 <TabsContent value="education" className="space-y-5">
                   {/* Class X Details */}
-                  <Card>
-                    <CardHeader>
+                  <Card className={flaggedSections.includes('class_x') ? 'border-yellow-300' : ''}>
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
                       <CardTitle className="text-base">Class X Details</CardTitle>
+                      <div className="flex items-center">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="flag-class-x" 
+                            checked={flaggedSections.includes('class_x')}
+                            onCheckedChange={() => handleToggleFlag('class_x')}
+                          />
+                          <label
+                            htmlFor="flag-class-x"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center text-yellow-600"
+                          >
+                            <AlertTriangle size={16} className="mr-1" /> Flag this section
+                          </label>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       {classX ? (
@@ -340,9 +382,24 @@ const VerificationDetail = () => {
                   </Card>
 
                   {/* Class XII Details */}
-                  <Card>
-                    <CardHeader>
+                  <Card className={flaggedSections.includes('class_xii') ? 'border-yellow-300' : ''}>
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
                       <CardTitle className="text-base">Class XII Details</CardTitle>
+                      <div className="flex items-center">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="flag-class-xii" 
+                            checked={flaggedSections.includes('class_xii')}
+                            onCheckedChange={() => handleToggleFlag('class_xii')}
+                          />
+                          <label
+                            htmlFor="flag-class-xii"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center text-yellow-600"
+                          >
+                            <AlertTriangle size={16} className="mr-1" /> Flag this section
+                          </label>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       {classXII ? (
@@ -384,9 +441,24 @@ const VerificationDetail = () => {
                   </Card>
 
                   {/* Graduation Details */}
-                  <Card>
-                    <CardHeader>
+                  <Card className={flaggedSections.includes('graduation') ? 'border-yellow-300' : ''}>
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between">
                       <CardTitle className="text-base">Graduation Details</CardTitle>
+                      <div className="flex items-center">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="flag-graduation" 
+                            checked={flaggedSections.includes('graduation')}
+                            onCheckedChange={() => handleToggleFlag('graduation')}
+                          />
+                          <label
+                            htmlFor="flag-graduation"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center text-yellow-600"
+                          >
+                            <AlertTriangle size={16} className="mr-1" /> Flag this section
+                          </label>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       {graduation ? (
@@ -433,9 +505,24 @@ const VerificationDetail = () => {
                 </TabsContent>
 
                 <TabsContent value="resume">
-                  <Card>
-                    <CardHeader>
+                  <Card className={flaggedSections.includes('resume') ? 'border-yellow-300' : ''}>
+                    <CardHeader className="flex flex-row items-center justify-between">
                       <CardTitle>Student Resume</CardTitle>
+                      <div className="flex items-center">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="flag-resume" 
+                            checked={flaggedSections.includes('resume')}
+                            onCheckedChange={() => handleToggleFlag('resume')}
+                          />
+                          <label
+                            htmlFor="flag-resume"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center text-yellow-600"
+                          >
+                            <AlertTriangle size={16} className="mr-1" /> Flag this section
+                          </label>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent>
                       {resume ? (

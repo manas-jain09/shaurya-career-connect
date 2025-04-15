@@ -13,14 +13,21 @@ interface JobCardProps {
   job: JobPosting;
   isApplied: boolean;
   isProfileVerified: boolean;
+  isFlaggedProfile: boolean;
   onApply: () => void;
 }
 
-const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, onApply }) => {
+const JobCard: React.FC<JobCardProps> = ({ 
+  job, 
+  isApplied, 
+  isProfileVerified, 
+  isFlaggedProfile,
+  onApply 
+}) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isApplying, setIsApplying] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isExpired = new Date(job.application_deadline) < new Date();
 
@@ -71,6 +78,16 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
     }
   };
 
+  const getDisabledReason = () => {
+    if (isApplied) return "Already applied";
+    if (isExpired) return "Application deadline passed";
+    if (!isProfileVerified) return "Profile not verified";
+    if (isFlaggedProfile) return "Profile has flagged sections";
+    return null;
+  };
+
+  const disabledReason = getDisabledReason();
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
@@ -115,13 +132,18 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
         >
           View Details
         </Button>
-        <Button
-          variant="default"
-          disabled={isApplied || isExpired || isApplying || !isProfileVerified}
-          onClick={handleApply}
-        >
-          {isApplying ? 'Applying...' : isApplied ? 'Applied' : 'Apply Now'}
-        </Button>
+        <div className="flex flex-col items-end">
+          <Button
+            variant="default"
+            disabled={!!disabledReason || isApplying}
+            onClick={handleApply}
+          >
+            {isApplying ? 'Applying...' : isApplied ? 'Applied' : 'Apply Now'}
+          </Button>
+          {disabledReason && (
+            <p className="text-xs text-red-500 mt-1">{disabledReason}</p>
+          )}
+        </div>
       </CardFooter>
     </Card>
   );
