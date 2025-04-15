@@ -1,13 +1,13 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { JobPosting, JobApplication } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 interface JobCardProps {
   job: JobPosting;
@@ -17,7 +17,6 @@ interface JobCardProps {
 }
 
 const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, onApply }) => {
-  const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isApplying, setIsApplying] = React.useState(false);
@@ -40,7 +39,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
       }
 
       if (existingApplication) {
-        toast.info('You have already applied for this job');
+        toast('You have already applied for this job');
         return;
       }
 
@@ -54,7 +53,7 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
 
       if (insertError) throw insertError;
 
-      toast.success('Application submitted successfully');
+      toast('Application submitted successfully');
       
       await supabase.from('notifications').insert({
         user_id: user?.id || '',
@@ -65,7 +64,9 @@ const JobCard: React.FC<JobCardProps> = ({ job, isApplied, isProfileVerified, on
 
     } catch (error) {
       console.error('Error applying for job:', error);
-      toast.error('Failed to submit application');
+      toast('Failed to submit application', {
+        description: 'Please try again later'
+      });
     } finally {
       setIsSubmitting(false);
     }

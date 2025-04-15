@@ -33,7 +33,6 @@ const Register = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   
-  // Personal Information
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -43,7 +42,6 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // Class X Fields
   const [xSchool, setXSchool] = useState('');
   const [xBoard, setXBoard] = useState('');
   const [xMarks, setXMarks] = useState('');
@@ -52,7 +50,6 @@ const Register = () => {
   const [xCGPAScale, setXCGPAScale] = useState<string>('');
   const [xMarksheetFile, setXMarksheetFile] = useState<File | null>(null);
   
-  // Class XII Fields
   const [xiiSchool, setXiiSchool] = useState('');
   const [xiiBoard, setXiiBoard] = useState('');
   const [xiiMarks, setXiiMarks] = useState('');
@@ -61,7 +58,6 @@ const Register = () => {
   const [xiiCGPAScale, setXiiCGPAScale] = useState<string>('');
   const [xiiMarksheetFile, setXiiMarksheetFile] = useState<File | null>(null);
   
-  // Graduation Fields
   const [gradCollege, setGradCollege] = useState('');
   const [gradCourse, setGradCourse] = useState('');
   const [gradDivision, setGradDivision] = useState('');
@@ -74,7 +70,6 @@ const Register = () => {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [activeStep, setActiveStep] = useState(0);
 
-  // Course and Division Options
   const courseOptions = [
     "Mechanical Engineering",
     "Electrical and Electronics Engineering (EEE)",
@@ -84,7 +79,6 @@ const Register = () => {
     "Computer Engineering and Technology - CSBS"
   ];
 
-  // Division options based on course
   const getDivisionOptions = (course: string) => {
     if (course.includes("Electrical and Electronics")) {
       return [
@@ -108,7 +102,6 @@ const Register = () => {
     return [];
   };
 
-  // Reset division when course changes
   useEffect(() => {
     setGradDivision('');
   }, [gradCourse]);
@@ -130,18 +123,12 @@ const Register = () => {
 
   const validatePersonalInfo = () => {
     if (!name || !email || !phone || !dob || !gender || !password) {
-      toast('Error', {
-        title: 'Please fill all required fields',
-        variant: 'destructive'
-      });
+      toast('Please fill all required fields');
       return false;
     }
     
     if (password !== confirmPassword) {
-      toast('Error', {
-        title: 'Passwords do not match',
-        variant: 'destructive'
-      });
+      toast('Passwords do not match');
       return false;
     }
     
@@ -150,34 +137,22 @@ const Register = () => {
 
   const validateEducationInfo = () => {
     if (!xSchool || !xBoard || !xMarks || !xPassingYear) {
-      toast('Error', {
-        title: 'Please fill all Class X details',
-        variant: 'destructive'
-      });
+      toast('Please fill all Class X details');
       return false;
     }
     
     if (!xiiSchool || !xiiBoard || !xiiMarks || !xiiPassingYear) {
-      toast('Error', {
-        title: 'Please fill all Class XII details',
-        variant: 'destructive'
-      });
+      toast('Please fill all Class XII details');
       return false;
     }
     
     if (!gradCollege || !gradCourse || !gradYear || !gradMarks) {
-      toast('Error', {
-        title: 'Please fill all Graduation details',
-        variant: 'destructive'
-      });
+      toast('Please fill all Graduation details');
       return false;
     }
     
     if (gradCourse && getDivisionOptions(gradCourse).length > 0 && !gradDivision) {
-      toast('Error', {
-        title: 'Please select a division for your course',
-        variant: 'destructive'
-      });
+      toast('Please select a division for your course');
       return false;
     }
     
@@ -186,10 +161,7 @@ const Register = () => {
 
   const validateUploads = () => {
     if (!xMarksheetFile || !xiiMarksheetFile || !gradMarksheetFile || !resumeFile) {
-      toast('Error', {
-        title: 'Please upload all required documents',
-        variant: 'destructive'
-      });
+      toast('Please upload all required documents');
       return false;
     }
     
@@ -340,16 +312,13 @@ const Register = () => {
       });
 
       setIsLoading(false);
-      toast('Success', {
-        description: 'Registration successful! Please log in after admin verification.'
-      });
+      toast('Registration successful! Please log in after admin verification.');
       navigate('/login');
     } catch (error) {
       console.error('Registration error:', error);
       setIsLoading(false);
-      toast('Error', {
-        description: 'Failed to complete registration. Please try again.',
-        variant: 'destructive'
+      toast('Failed to complete registration. Please try again.', {
+        description: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };
