@@ -121,16 +121,6 @@ const Login = () => {
             </a>
           </p>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-gray-500">
-            <div>
-              <div className="font-medium mb-1">Demo Student</div>
-              <div>Email: student@example.com</div>
-              <div>Password: password</div>
-            </div>
-            <div>
-              <div className="font-medium mb-1">Admin Account</div>
-              <div>Email: admin@shaurya.edu</div>
-              <div>Password: admin123</div>
-            </div>
           </div>
         </div>
       </div>
