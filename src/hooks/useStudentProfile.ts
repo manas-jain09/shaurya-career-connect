@@ -27,7 +27,6 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
-  const [is_frozen, setIsFrozen] = useState<boolean>(false);
 
   // Use the provided profileId or get it from the user
   const studentProfileId = profileId || user?.profileId;
@@ -50,21 +49,14 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
         .single();
 
       if (profileError) throw profileError;
-      
-      // Ensure proper boolean type for is_frozen
-      const typedProfileData: StudentProfile = {
-        ...profileData,
-        is_frozen: profileData.is_frozen === true // Ensure boolean type
-      };
-      
-      setProfile(typedProfileData);
+      setProfile(profileData);
 
       // Determine job eligibility based on verification status, placement interest, and frozen status
       // The student is eligible for jobs if they are verified AND they have chosen placement/internship AND not frozen
-      const isVerified = typedProfileData.is_verified || false;
-      const placementInterest = typedProfileData.placement_interest || '';
-      const isFrozen = typedProfileData.is_frozen || false;
-      const isBlocked = typedProfileData.is_blocked || false;
+      const isVerified = profileData.is_verified || false;
+      const placementInterest = profileData.placement_interest || '';
+      const isFrozen = profileData.is_frozen || false;
+      const isBlocked = profileData.is_blocked || false;
       
       const isEligible = isVerified && 
                          placementInterest === 'placement/internship' && 
@@ -72,7 +64,6 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
                          !isBlocked;
       
       setIsEligibleForJobs(isEligible);
-      setIsFrozen(!!isFrozen);
       
       console.log('Eligibility check:', { isVerified, placementInterest, isFrozen, isBlocked, isEligible });
 
