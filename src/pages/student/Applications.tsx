@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
-import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, FileDown, GraduationCap, Award } from 'lucide-react';
+import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, FileDown, GraduationCap, Award, Building } from 'lucide-react';
 
 const statusDisplayConfig = {
   applied: {
@@ -43,6 +43,11 @@ const statusDisplayConfig = {
     label: 'PPO',
     color: 'bg-pink-100 text-pink-800',
     icon: <Award className="h-4 w-4 text-pink-500" />
+  },
+  placement: {
+    label: 'Placement',
+    color: 'bg-teal-100 text-teal-800',
+    icon: <Building className="h-4 w-4 text-teal-500" />
   }
 };
 
@@ -50,6 +55,7 @@ const Applications = () => {
   const { applications, isLoading, error, counts } = useJobApplications();
   const { profile } = useStudentProfile();
   const isBlocked = profile?.is_blocked || false;
+  const hasPlacement = profile?.has_placement || false;
 
   if (isLoading) {
     return (
@@ -83,7 +89,21 @@ const Applications = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
+        {hasPlacement && (
+          <Card className="bg-green-50 border-green-200">
+            <CardContent className="p-4 flex items-center space-x-3">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <div>
+                <h3 className="font-semibold text-green-700">You have been placed!</h3>
+                <p className="text-sm text-green-600">
+                  Congratulations! You have already received a job offer and your profile has been marked as placed.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-2 md:grid-cols-8 gap-4">
           <Card className="bg-gray-50">
             <CardContent className="p-4 flex flex-col items-center justify-center">
               <div className="text-3xl font-bold">{counts.total}</div>
@@ -124,6 +144,12 @@ const Applications = () => {
             <CardContent className="p-4 flex flex-col items-center justify-center">
               <div className="text-3xl font-bold text-pink-600">{counts.ppo || 0}</div>
               <div className="text-sm text-pink-600">PPO</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-teal-50">
+            <CardContent className="p-4 flex flex-col items-center justify-center">
+              <div className="text-3xl font-bold text-teal-600">{counts.placement || 0}</div>
+              <div className="text-sm text-teal-600">Placement</div>
             </CardContent>
           </Card>
         </div>
@@ -174,7 +200,7 @@ const Applications = () => {
                         <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
                       </div>
                       
-                      {application.offer_letter_url && ['selected', 'internship', 'ppo'].includes(application.status) && (
+                      {application.offer_letter_url && ['selected', 'internship', 'ppo', 'placement'].includes(application.status) && (
                         <a 
                           href={application.offer_letter_url} 
                           target="_blank" 

@@ -50,15 +50,17 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
       if (profileError) throw profileError;
       setProfile(profileData);
 
-      // Determine job eligibility based on verification status and placement interest
+      // Determine job eligibility based on verification status, placement interest, and placement status
       // The student is eligible for jobs if they are verified AND they have chosen placement/internship
+      // AND they do not already have a placement
       const isVerified = profileData.is_verified || false;
       const placementInterest = profileData.placement_interest || '';
+      const hasPlacement = profileData.has_placement || false;
       
-      const isEligible = isVerified && placementInterest === 'placement/internship';
+      const isEligible = isVerified && placementInterest === 'placement/internship' && !hasPlacement;
       setIsEligibleForJobs(isEligible);
       
-      console.log('Eligibility check:', { isVerified, placementInterest, isEligible });
+      console.log('Eligibility check:', { isVerified, placementInterest, hasPlacement, isEligible });
 
       // Fetch Class X details
       const { data: classXData, error: classXError } = await supabase
