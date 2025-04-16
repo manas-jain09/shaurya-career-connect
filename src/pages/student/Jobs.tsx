@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StudentLayout from '@/components/layouts/StudentLayout';
@@ -83,6 +84,7 @@ const Jobs = () => {
 
       if (error) throw error;
       
+      // Type-cast the data to ensure it matches the JobPosting type
       const typedJobs = data?.map(job => ({
         ...job,
         status: job.status as JobPostingStatus
@@ -91,6 +93,7 @@ const Jobs = () => {
       setJobs(typedJobs);
       setFilteredJobs(typedJobs);
       
+      // Extract unique locations
       const uniqueLocations = [...new Set(typedJobs.map(job => job.location))];
       setLocations(uniqueLocations);
     } catch (error) {
@@ -113,22 +116,27 @@ const Jobs = () => {
   const checkIfUserCanApply = () => {
     if (!profile) return false;
     
+    // Check if student has a selected application
     if (hasSelectedApplication) {
       return false;
     }
     
+    // Check if student is blocked
     if (profile.is_blocked) {
       return false;
     }
     
+    // Check if student is verified
     if (!profile.is_verified) {
       return false;
     }
     
+    // Check if student is interested in placement
     if (profile.placement_interest !== 'placement/internship') {
       return false;
     }
     
+    // Check if student has agreed to policies
     if (!profile.agreed_to_policies) {
       return false;
     }
@@ -177,6 +185,7 @@ const Jobs = () => {
     }
     
     try {
+      // Check eligibility
       if (job.min_class_x_marks || job.min_class_x_cgpa) {
         const { data: classXData } = await supabase
           .from('class_x_details')
@@ -217,7 +226,7 @@ const Jobs = () => {
             toast({
               title: "Eligibility Issue",
               description: `Your Class XII marks (${classXIIData.marks}%) do not meet the minimum requirement (${job.min_class_xii_marks}%).`,
-              variant: "default",
+              variant: "warning",
             });
             return;
           }
@@ -226,7 +235,7 @@ const Jobs = () => {
             toast({
               title: "Eligibility Issue",
               description: `Your Class XII CGPA (${classXIIData.marks}) does not meet the minimum requirement (${job.min_class_xii_cgpa}).`,
-              variant: "default",
+              variant: "warning",
             });
             return;
           }
@@ -245,7 +254,7 @@ const Jobs = () => {
             toast({
               title: "Eligibility Issue",
               description: `Your graduation marks (${gradData.marks}%) do not meet the minimum requirement (${job.min_graduation_marks}%).`,
-              variant: "default",
+              variant: "warning",
             });
             return;
           }
@@ -288,6 +297,7 @@ const Jobs = () => {
         }
       }
       
+      // Submit application
       const { data, error } = await supabase
         .from('job_applications')
         .insert([
