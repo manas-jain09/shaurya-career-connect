@@ -825,6 +825,23 @@ const Reports = () => {
     }));
   };
 
+  const getBadgeClassName = (status: JobApplicationStatus) => {
+    switch (status) {
+      case 'selected':
+        return "bg-green-100 text-green-800 hover:bg-green-100";
+      case 'rejected':
+        return "bg-red-100 text-red-800 hover:bg-red-100";
+      case 'shortlisted':
+      case 'under_review':
+        return "bg-blue-100 text-blue-800 hover:bg-blue-100";
+      case 'internship':
+      case 'ppo':
+        return "bg-purple-100 text-purple-800 hover:bg-purple-100";
+      default:
+        return "bg-gray-100 text-gray-800 hover:bg-gray-100";
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -1204,13 +1221,7 @@ const Reports = () => {
                                   <TableCell>{app.job?.location || '-'}</TableCell>
                                   <TableCell>{app.job?.package || '-'}</TableCell>
                                   <TableCell>
-                                    <Badge className={
-                                      app.status === 'selected' ? "bg-green-100 text-green-800 hover:bg-green-100" :
-                                      app.status === 'rejected' ? "bg-red-100 text-red-800 hover:bg-red-100" : 
-                                      app.status === 'shortlisted' || app.status === 'interviewed' ? "bg-blue-100 text-blue-800 hover:bg-blue-100" :
-                                      app.status === 'internship' || app.status === 'ppo' ? "bg-purple-100 text-purple-800 hover:bg-purple-100" :
-                                      "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                                    }>
+                                    <Badge className={getBadgeClassName(app.status)}>
                                       {app.status === 'ppo' ? 'PPO' : app.status.charAt(0).toUpperCase() + app.status.slice(1).replace('_', ' ')}
                                     </Badge>
                                   </TableCell>
