@@ -28,11 +28,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
-import { Loader2, Search, FileDown, Filter, Upload } from 'lucide-react';
+import { Loader2, Search, FileDown, Filter } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const statusColors: Record<JobApplicationStatus, string> = {
@@ -64,11 +63,8 @@ const Applications = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [adminNotes, setAdminNotes] = useState('');
   const [newStatus, setNewStatus] = useState<JobApplicationStatus>('applied');
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [offerLetterFile, setOfferLetterFile] = useState<File | null>(null);
-  const [uploadingOfferLetter, setUploadingOfferLetter] = useState(false);
   
   const { toast } = useToast();
   
@@ -130,66 +126,14 @@ const Applications = () => {
   const handleOpenStatusDialog = (application: JobApplication) => {
     setSelectedApplication(application);
     setNewStatus(application.status);
-    setAdminNotes(application.admin_notes || '');
-    setOfferLetterFile(null);
     setDialogOpen(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setOfferLetterFile(e.target.files[0]);
-    }
-  };
-
-  const uploadOfferLetter = async () => {
-    if (!offerLetterFile || !selectedApplication) return null;
-
-    try {
-      setUploadingOfferLetter(true);
-      
-      const fileExt = offerLetterFile.name.split('.').pop();
-      const fileName = `${selectedApplication.id}-${Date.now()}.${fileExt}`;
-      const filePath = `offer-letters/${fileName}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, offerLetterFile);
-      
-      if (uploadError) throw uploadError;
-      
-      const { data } = supabase.storage
-        .from('documents')
-        .getPublicUrl(filePath);
-      
-      if (!data.publicUrl) throw new Error('Failed to get public URL for offer letter');
-      
-      return data.publicUrl;
-    } catch (error) {
-      console.error('Error uploading offer letter:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload offer letter',
-        variant: 'destructive',
-      });
-      return null;
-    } finally {
-      setUploadingOfferLetter(false);
-    }
-  };
-  
   const handleUpdateStatus = async () => {
     if (!selectedApplication) return;
     
     try {
       setUpdatingStatus(true);
-      
-      let offerLetterUrl = selectedApplication.offer_letter_url;
-      if (offerLetterFile && ['selected', 'internship', 'ppo', 'placement'].includes(newStatus)) {
-        const uploadedUrl = await uploadOfferLetter();
-        if (uploadedUrl) {
-          offerLetterUrl = uploadedUrl;
-        }
-      }
       
       const shouldFreezeProfile = ['selected', 'internship', 'ppo', 'placement'].includes(newStatus) && 
                                  !['selected', 'internship', 'ppo', 'placement'].includes(selectedApplication.status);
@@ -198,8 +142,6 @@ const Applications = () => {
         .from('job_applications')
         .update({
           status: newStatus,
-          admin_notes: adminNotes,
-          offer_letter_url: offerLetterUrl,
           updated_at: new Date().toISOString()
         })
         .eq('id', selectedApplication.id);
@@ -233,36 +175,6 @@ const Applications = () => {
         }
       }
       
-      const statusDisplay = newStatus === 'ppo' ? 'PPO' : 
-                            newStatus === 'placement' ? 'Placement' : 
-                            newStatus.replace('_', ' ');
-      
-      const notificationData = {
-        user_id: selectedApplication.student_id,
-        title: 'Application Status Updated',
-        message: `Your application for ${selectedApplication.job?.title} at ${selectedApplication.job?.company_name} has been updated to ${statusDisplay}.`,
-        is_read: false,
-        created_at: new Date().toISOString()
-      };
-      
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert(notificationData);
-      
-      if (notificationError) throw notificationError;
-      
-      if (shouldFreezeProfile) {
-        const frozenNotificationData = {
-          user_id: selectedApplication.student_id,
-          title: 'Profile Frozen',
-          message: `Your profile has been frozen because you have been ${newStatus} for ${selectedApplication.job?.title} at ${selectedApplication.job?.company_name}. You can no longer apply for other positions.`,
-          is_read: false,
-          created_at: new Date().toISOString()
-        };
-        
-        await supabase.from('notifications').insert(frozenNotificationData);
-      }
-      
       toast({
         title: 'Success',
         description: 'Application status updated successfully'
@@ -292,7 +204,6 @@ const Applications = () => {
       'Package': app.job?.package,
       'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
       'Applied Date': new Date(app.created_at || '').toLocaleDateString(),
-      'Notes': app.admin_notes,
       'Offer Letter': app.offer_letter_url || 'Not uploaded'
     }));
   };
@@ -499,42 +410,6 @@ const Applications = () => {
                     </div>
                   </RadioGroup>
                 </div>
-                
-                {['selected', 'internship', 'ppo', 'placement'].includes(newStatus) && (
-                  <div className="space-y-2">
-                    <Label htmlFor="offer_letter">Offer Letter</Label>
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        id="offer_letter"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={handleFileChange}
-                      />
-                      {selectedApplication?.offer_letter_url && (
-                        <a 
-                          href={selectedApplication.offer_letter_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-blue-600 hover:underline text-sm whitespace-nowrap"
-                        >
-                          View current
-                        </a>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">Upload offer letter in PDF or DOC format</p>
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  <Label htmlFor="admin_notes">Admin Notes</Label>
-                  <Textarea
-                    id="admin_notes"
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
-                    placeholder="Add notes about this application..."
-                    rows={4}
-                  />
-                </div>
               </div>
             </ScrollArea>
           </div>
@@ -545,12 +420,12 @@ const Applications = () => {
             </Button>
             <Button 
               onClick={handleUpdateStatus}
-              disabled={updatingStatus || uploadingOfferLetter}
+              disabled={updatingStatus}
             >
-              {updatingStatus || uploadingOfferLetter ? (
+              {updatingStatus ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {uploadingOfferLetter ? 'Uploading...' : 'Saving...'}
+                  Saving...
                 </>
               ) : (
                 'Update Status'
