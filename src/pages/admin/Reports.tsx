@@ -952,78 +952,76 @@ const Reports = () => {
                       </Select>
                     </div>
                     
-                    <div className="rounded-md border overflow-hidden">
-                      <ScrollArea className="h-[calc(100vh-350px)]">
-                        <div className="min-w-[1000px]">
-                          <Table>
-                            <TableHeader>
+                    <ScrollArea className="w-full overflow-auto">
+                      <div className="min-w-[1000px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>
+                                {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>Phone</TableHead>
+                              <TableHead>
+                                {renderSortButton('department', 'Department', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('course', 'Course', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('passing_year', 'Passing Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>Selected</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredStudents.length === 0 ? (
                               <TableRow>
-                                <TableHead>
-                                  {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                                </TableHead>
-                                <TableHead>Phone</TableHead>
-                                <TableHead>
-                                  {renderSortButton('department', 'Department', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('course', 'Course', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('passing_year', 'Passing Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                                </TableHead>
-                                <TableHead>Selected</TableHead>
+                                <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                                  No students found matching the criteria
+                                </TableCell>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredStudents.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={8} className="text-center py-4 text-gray-500">
-                                    No students found matching the criteria
+                            ) : (
+                              filteredStudents.map((student) => (
+                                <TableRow key={student.id}>
+                                  <TableCell className="font-medium">
+                                    {student.first_name} {student.last_name}
+                                  </TableCell>
+                                  <TableCell>{student.phone}</TableCell>
+                                  <TableCell>{student.department || '-'}</TableCell>
+                                  <TableCell>{student.graduation?.college_name || '-'}</TableCell>
+                                  <TableCell>{student.graduation?.course || '-'}</TableCell>
+                                  <TableCell>{student.graduation?.passing_year || '-'}</TableCell>
+                                  <TableCell>
+                                    {student.is_verified ? (
+                                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Verified</Badge>
+                                    ) : student.is_blocked ? (
+                                      <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Blocked</Badge>
+                                    ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
+                                      <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Flagged</Badge>
+                                    ) : (
+                                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {student.is_selected ? (
+                                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Yes</Badge>
+                                    ) : (
+                                      <span className="text-gray-500">No</span>
+                                    )}
                                   </TableCell>
                                 </TableRow>
-                              ) : (
-                                filteredStudents.map((student) => (
-                                  <TableRow key={student.id}>
-                                    <TableCell className="font-medium">
-                                      {student.first_name} {student.last_name}
-                                    </TableCell>
-                                    <TableCell>{student.phone}</TableCell>
-                                    <TableCell>{student.department || '-'}</TableCell>
-                                    <TableCell>{student.graduation?.college_name || '-'}</TableCell>
-                                    <TableCell>{student.graduation?.course || '-'}</TableCell>
-                                    <TableCell>{student.graduation?.passing_year || '-'}</TableCell>
-                                    <TableCell>
-                                      {student.is_verified ? (
-                                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Verified</Badge>
-                                      ) : student.is_blocked ? (
-                                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Blocked</Badge>
-                                      ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
-                                        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Flagged</Badge>
-                                      ) : (
-                                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      {student.is_selected ? (
-                                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Yes</Badge>
-                                      ) : (
-                                        <span className="text-gray-500">No</span>
-                                      )}
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </ScrollArea>
-                    </div>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
                   </div>
                 </CardContent>
               </Card>
@@ -1177,68 +1175,66 @@ const Reports = () => {
                       </Popover>
                     </div>
                     
-                    <div className="rounded-md border overflow-hidden">
-                      <ScrollArea className="h-[calc(100vh-350px)]">
-                        <div className="min-w-[1000px]">
-                          <Table>
-                            <TableHeader>
+                    <ScrollArea className="w-full overflow-auto">
+                      <div className="min-w-[1000px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>
+                                {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>Phone</TableHead>
+                              <TableHead>
+                                {renderSortButton('job', 'Job Title', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('company', 'Company', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>Location</TableHead>
+                              <TableHead>
+                                {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('date', 'Applied On', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredApplications.length === 0 ? (
                               <TableRow>
-                                <TableHead>
-                                  {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                                </TableHead>
-                                <TableHead>Phone</TableHead>
-                                <TableHead>
-                                  {renderSortButton('job', 'Job Title', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('company', 'Company', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                                </TableHead>
-                                <TableHead>Location</TableHead>
-                                <TableHead>
-                                  {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('date', 'Applied On', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                                </TableHead>
+                                <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                                  No applications found matching the criteria
+                                </TableCell>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredApplications.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={8} className="text-center py-4 text-gray-500">
-                                    No applications found matching the criteria
+                            ) : (
+                              filteredApplications.map((app) => (
+                                <TableRow key={app.id}>
+                                  <TableCell className="font-medium">
+                                    {app.student_profile?.first_name || ''} {app.student_profile?.last_name || ''}
+                                  </TableCell>
+                                  <TableCell>{app.student_profile?.phone || '-'}</TableCell>
+                                  <TableCell>{app.job?.title || '-'}</TableCell>
+                                  <TableCell>{app.job?.company_name || '-'}</TableCell>
+                                  <TableCell>{app.job?.location || '-'}</TableCell>
+                                  <TableCell>{app.job?.package || '-'}</TableCell>
+                                  <TableCell>
+                                    <Badge className={getBadgeClassName(app.status)}>
+                                      {app.status === 'ppo' ? 'PPO' : app.status.charAt(0).toUpperCase() + app.status.slice(1).replace('_', ' ')}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {app.created_at ? new Date(app.created_at).toLocaleDateString() : '-'}
                                   </TableCell>
                                 </TableRow>
-                              ) : (
-                                filteredApplications.map((app) => (
-                                  <TableRow key={app.id}>
-                                    <TableCell className="font-medium">
-                                      {app.student_profile?.first_name || ''} {app.student_profile?.last_name || ''}
-                                    </TableCell>
-                                    <TableCell>{app.student_profile?.phone || '-'}</TableCell>
-                                    <TableCell>{app.job?.title || '-'}</TableCell>
-                                    <TableCell>{app.job?.company_name || '-'}</TableCell>
-                                    <TableCell>{app.job?.location || '-'}</TableCell>
-                                    <TableCell>{app.job?.package || '-'}</TableCell>
-                                    <TableCell>
-                                      <Badge className={getBadgeClassName(app.status)}>
-                                        {app.status === 'ppo' ? 'PPO' : app.status.charAt(0).toUpperCase() + app.status.slice(1).replace('_', ' ')}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      {app.created_at ? new Date(app.created_at).toLocaleDateString() : '-'}
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </ScrollArea>
-                    </div>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
                   </div>
                 </CardContent>
               </Card>
@@ -1378,75 +1374,73 @@ const Reports = () => {
                       </Popover>
                     </div>
                     
-                    <div className="rounded-md border overflow-hidden">
-                      <ScrollArea className="h-[calc(100vh-350px)]">
-                        <div className="min-w-[1000px]">
-                          <Table>
-                            <TableHeader>
+                    <ScrollArea className="w-full overflow-auto">
+                      <div className="min-w-[1000px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>
+                                {renderSortButton('title', 'Job Title', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('company', 'Company', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('location', 'Location', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('package', 'Package', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('applications', 'Applications', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('selected', 'Selected', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('deadline', 'Deadline', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('status', 'Status', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredJobs.length === 0 ? (
                               <TableRow>
-                                <TableHead>
-                                  {renderSortButton('title', 'Job Title', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('company', 'Company', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('location', 'Location', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('package', 'Package', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('applications', 'Applications', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('selected', 'Selected', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('deadline', 'Deadline', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
-                                <TableHead>
-                                  {renderSortButton('status', 'Status', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                                </TableHead>
+                                <TableCell colSpan={8} className="text-center py-4 text-gray-500">
+                                  No jobs found matching the criteria
+                                </TableCell>
                               </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {filteredJobs.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={8} className="text-center py-4 text-gray-500">
-                                    No jobs found matching the criteria
+                            ) : (
+                              filteredJobs.map((job) => (
+                                <TableRow key={job.id}>
+                                  <TableCell className="font-medium">{job.title}</TableCell>
+                                  <TableCell>{job.company_name}</TableCell>
+                                  <TableCell>{job.location}</TableCell>
+                                  <TableCell>{job.package}</TableCell>
+                                  <TableCell>{job.application_count}</TableCell>
+                                  <TableCell>{job.selected_count}</TableCell>
+                                  <TableCell>
+                                    {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : '-'}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge className={
+                                      job.status === 'active' ? "bg-green-100 text-green-800 hover:bg-green-100" :
+                                      job.status === 'inactive' ? "bg-orange-100 text-orange-800 hover:bg-orange-100" : 
+                                      job.status === 'closed' ? "bg-red-100 text-red-800 hover:bg-red-100" :
+                                      "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                                    }>
+                                      {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                                    </Badge>
                                   </TableCell>
                                 </TableRow>
-                              ) : (
-                                filteredJobs.map((job) => (
-                                  <TableRow key={job.id}>
-                                    <TableCell className="font-medium">{job.title}</TableCell>
-                                    <TableCell>{job.company_name}</TableCell>
-                                    <TableCell>{job.location}</TableCell>
-                                    <TableCell>{job.package}</TableCell>
-                                    <TableCell>{job.application_count}</TableCell>
-                                    <TableCell>{job.selected_count}</TableCell>
-                                    <TableCell>
-                                      {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge className={
-                                        job.status === 'active' ? "bg-green-100 text-green-800 hover:bg-green-100" :
-                                        job.status === 'inactive' ? "bg-orange-100 text-orange-800 hover:bg-orange-100" : 
-                                        job.status === 'closed' ? "bg-red-100 text-red-800 hover:bg-red-100" :
-                                        "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                                      }>
-                                        {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                                      </Badge>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </ScrollArea>
-                    </div>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
                   </div>
                 </CardContent>
               </Card>
