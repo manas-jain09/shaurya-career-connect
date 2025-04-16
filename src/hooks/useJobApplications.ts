@@ -151,6 +151,15 @@ export const useJobApplications = (): JobApplicationData => {
           rejected,
           selected
         });
+      } else {
+        setCounts({
+          total: 0,
+          applied: 0,
+          underReview: 0,
+          shortlisted: 0,
+          rejected: 0,
+          selected: 0
+        });
       }
     } catch (err) {
       console.error('Error fetching job applications:', err);

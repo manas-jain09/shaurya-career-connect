@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,27 +7,9 @@ import {
   Briefcase, 
   CheckCircle2, 
   Clock, 
-  BarChart2, 
-  PieChart 
+  BarChart2
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  PieChart as RePieChart,
-  Pie,
-  Cell,
-  Legend
-} from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
-import { StudentProfile } from '@/types/database.types';
-import { Link } from 'react-router-dom';
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#8dd1e1'];
 
 const Dashboard = () => {
   const [statsData, setStatsData] = useState([
@@ -40,9 +21,6 @@ const Dashboard = () => {
     { title: 'Placement Rate', value: '0%', icon: BarChart2, color: 'bg-pink-50 text-pink-500' },
   ]);
   
-  const [placementData, setPlacementData] = useState([]);
-  const [companyData, setCompanyData] = useState([]);
-  const [verificationRequests, setVerificationRequests] = useState<StudentProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,16 +38,6 @@ const Dashboard = () => {
       const totalStudents = studentProfiles?.length || 0;
       const verifiedStudents = studentProfiles?.filter(p => p.is_verified).length || 0;
       const pendingStudents = studentProfiles?.filter(p => p.verification_status === 'pending').length || 0;
-      
-      // Fetch pending verification requests
-      const { data: pendingVerifications } = await supabase
-        .from('student_profiles')
-        .select('*')
-        .eq('verification_status', 'pending')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      setVerificationRequests(pendingVerifications || []);
       
       // Fetch job stats
       const { data: jobs } = await supabase
@@ -101,80 +69,6 @@ const Dashboard = () => {
         { title: 'Total Applications', value: totalApplications, icon: CheckCircle2, color: 'bg-indigo-50 text-indigo-500' },
         { title: 'Placement Rate', value: `${placementRate}%`, icon: BarChart2, color: 'bg-pink-50 text-pink-500' },
       ]);
-      
-      // Fetch data for department-wise placement chart
-      const { data: graduationData } = await supabase
-        .from('graduation_details')
-        .select(`
-          course,
-          student_id
-        `);
-      
-      // Get all applications to determine placed students
-      const { data: appData } = await supabase
-        .from('job_applications')
-        .select('student_id, status');
-      
-      // Map of student IDs who are placed (selected)
-      const placedStudents = new Set(
-        appData
-          ?.filter(app => app.status === 'selected')
-          .map(app => app.student_id) || []
-      );
-
-      // Process graduation data to get department stats
-      const departmentCounts: Record<string, { placed: number, total: number }> = {};
-      
-      graduationData?.forEach(grad => {
-        if (!departmentCounts[grad.course]) {
-          departmentCounts[grad.course] = { placed: 0, total: 0 };
-        }
-        
-        departmentCounts[grad.course].total++;
-        
-        if (placedStudents.has(grad.student_id)) {
-          departmentCounts[grad.course].placed++;
-        }
-      });
-
-      // Convert to array format for chart
-      const deptData = Object.keys(departmentCounts).map(course => ({
-        name: course,
-        placed: departmentCounts[course].placed,
-        total: departmentCounts[course].total
-      }));
-      
-      setPlacementData(deptData);
-      
-      // Fetch data for company-wise placement chart
-      const { data: selectedApps } = await supabase
-        .from('job_applications')
-        .select(`
-          job_id,
-          job:job_id(company_name)
-        `)
-        .eq('status', 'selected');
-      
-      // Count placements by company
-      const companyCounts: Record<string, number> = {};
-      
-      selectedApps?.forEach(app => {
-        const company = app.job?.company_name || 'Unknown';
-        
-        if (!companyCounts[company]) {
-          companyCounts[company] = 0;
-        }
-        
-        companyCounts[company]++;
-      });
-
-      // Convert to array format for chart
-      const compData = Object.keys(companyCounts).map(company => ({
-        name: company,
-        value: companyCounts[company]
-      }));
-      
-      setCompanyData(compData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -195,138 +89,23 @@ const Dashboard = () => {
             <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {statsData.map((stat, index) => (
-                <Card key={index}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                        <p className="text-3xl font-bold text-gray-800 mt-1">{stat.value}</p>
-                      </div>
-                      <div className={`h-12 w-12 rounded-full flex items-center justify-center ${stat.color}`}>
-                        <stat.icon size={24} />
-                      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {statsData.map((stat, index) => (
+              <Card key={index}>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">{stat.title}</p>
+                      <p className="text-3xl font-bold text-gray-800 mt-1">{stat.value}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Department-wise Placement</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={placementData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis />
-                        <Tooltip />
-                        <Legend />
-                        <Bar dataKey="placed" name="Placed" fill="#3b82f6" />
-                        <Bar dataKey="total" name="Total Students" fill="#93c5fd" />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center ${stat.color}`}>
+                      <stat.icon size={24} />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle>Company-wise Placements</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RePieChart>
-                        <Pie
-                          data={companyData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {companyData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend />
-                      </RePieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Verification Requests</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {verificationRequests.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3">Name</th>
-                            <th className="px-6 py-3">Phone</th>
-                            <th className="px-6 py-3">Gender</th>
-                            <th className="px-6 py-3">Submitted On</th>
-                            <th className="px-6 py-3">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {verificationRequests.map((request) => (
-                            <tr key={request.id} className="bg-white border-b">
-                              <td className="px-6 py-4 font-medium text-gray-900">
-                                {`${request.first_name} ${request.last_name}`}
-                              </td>
-                              <td className="px-6 py-4">{request.phone}</td>
-                              <td className="px-6 py-4">{request.gender}</td>
-                              <td className="px-6 py-4">{new Date(request.created_at || '').toLocaleDateString()}</td>
-                              <td className="px-6 py-4">
-                                <Link 
-                                  to={`/admin/verification/${request.id}`}
-                                  className="text-blue-600 hover:underline mr-3"
-                                >
-                                  Review
-                                </Link>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="py-8 text-center text-gray-500">
-                      No pending verification requests
-                    </div>
-                  )}
-                  <div className="mt-4 text-center">
-                    <Link 
-                      to="/admin/verification" 
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      View All Requests
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </>
+            ))}
+          </div>
         )}
       </div>
     </AdminLayout>

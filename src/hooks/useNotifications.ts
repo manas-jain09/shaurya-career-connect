@@ -46,8 +46,8 @@ export const useNotifications = (): NotificationData => {
       
       // Check for new notifications and show toasts
       if (previousNotifications.length > 0) {
-        const prevIds = previousNotifications.map(n => n.id);
-        const newNotifications = typedNotifications.filter(n => !prevIds.includes(n.id));
+        const prevIds = new Set(previousNotifications.map(n => n.id));
+        const newNotifications = typedNotifications.filter(n => !prevIds.has(n.id as string));
         
         newNotifications.forEach(notification => {
           toast(notification.title, {
@@ -133,7 +133,15 @@ export const useNotifications = (): NotificationData => {
           filter: `user_id=eq.${user.id}`
         },
         (payload) => {
-          console.log('New notification:', payload);
+          console.log('New notification received:', payload);
+          
+          // Show toast for the new notification
+          const notification = payload.new as Notification;
+          toast(notification.title, {
+            description: notification.message,
+          });
+          
+          // Refresh notifications to include the new one
           fetchNotifications();
         }
       )
@@ -144,6 +152,7 @@ export const useNotifications = (): NotificationData => {
     };
   }, [user]);
 
+  // Initial fetch of notifications
   useEffect(() => {
     if (user) {
       fetchNotifications();

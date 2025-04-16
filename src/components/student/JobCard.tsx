@@ -42,9 +42,21 @@ const JobCard: React.FC<JobCardProps> = ({
   };
 
   const handleApply = async () => {
-    // Check eligibility before submitting application
+    // Strictly check eligibility before submitting application
     if (!isEligible) {
       toast.error('You are not eligible for this job');
+      return;
+    }
+
+    // Check if profile is verified
+    if (!isProfileVerified) {
+      toast.error('Your profile must be verified before applying');
+      return;
+    }
+
+    // Check if profile has flagged sections
+    if (isFlaggedProfile) {
+      toast.error('Your profile has flagged sections that need to be fixed');
       return;
     }
     
@@ -216,7 +228,7 @@ const JobCard: React.FC<JobCardProps> = ({
               onClick={handleApply}
               disabled={!!disabledReason || isSubmitting}
             >
-              {isApplied ? 'Already Applied' : 'Apply Now'}
+              {isApplied ? 'Already Applied' : isSubmitting ? 'Applying...' : 'Apply Now'}
             </Button>
           </DialogFooter>
         </DialogContent>
