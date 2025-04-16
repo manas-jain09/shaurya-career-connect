@@ -1,4 +1,3 @@
-
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -97,7 +96,7 @@ export interface JobPosting {
   updated_at?: string;
 }
 
-export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected' | 'internship' | 'ppo';
+export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'selected' | 'rejected' | 'internship' | 'ppo' | 'placement';
 
 export interface JobApplication {
   id?: string;

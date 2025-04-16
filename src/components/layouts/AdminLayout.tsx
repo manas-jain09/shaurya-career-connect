@@ -8,7 +8,6 @@ import {
   Briefcase, 
   FileCheck, 
   BarChart, 
-  Settings, 
   LogOut,
   ClipboardList
 } from 'lucide-react';
@@ -24,7 +23,6 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Applications', path: '/admin/applications', icon: ClipboardList },
     { name: 'Students', path: '/admin/students', icon: Users },
     { name: 'Reports', path: '/admin/reports', icon: BarChart },
-    { name: 'Settings', path: '/admin/settings', icon: Settings },
   ];
 
   const isActive = (path: string) => location.pathname === path;

@@ -4,6 +4,7 @@ import { JobApplicationStatus } from "@/types/database.types";
 export const getStatusBadgeClass = (status: JobApplicationStatus): string => {
   switch (status) {
     case 'selected':
+    case 'placement':
       return "bg-green-100 text-green-800 hover:bg-green-100";
     case 'rejected':
       return "bg-red-100 text-red-800 hover:bg-red-100";
@@ -24,5 +25,9 @@ export const formatStatus = (status: JobApplicationStatus): string => {
 };
 
 export const getAllApplicationStatuses = (): JobApplicationStatus[] => {
-  return ['applied', 'under_review', 'shortlisted', 'selected', 'rejected', 'internship', 'ppo'];
+  return ['applied', 'under_review', 'shortlisted', 'selected', 'rejected', 'internship', 'ppo', 'placement'];
+};
+
+export const isFinalStatus = (status: JobApplicationStatus): boolean => {
+  return ['selected', 'internship', 'ppo', 'placement'].includes(status);
 };
