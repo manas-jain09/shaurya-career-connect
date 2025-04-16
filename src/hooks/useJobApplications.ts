@@ -103,6 +103,23 @@ export const useJobApplications = (): JobApplicationData => {
             }
             
             toast(`Your application for ${jobTitle} at ${companyName} ${statusMessage}`);
+            
+            // Create a notification record in the database
+            if (user) {
+              supabase
+                .from('notifications')
+                .insert({
+                  user_id: user.id,
+                  title: 'Application Status Update',
+                  message: `Your application for ${jobTitle} at ${companyName} ${statusMessage}`,
+                  is_read: false
+                })
+                .then(({ error }) => {
+                  if (error) {
+                    console.error('Error creating notification:', error);
+                  }
+                });
+            }
           }
         });
       }
@@ -139,7 +156,7 @@ export const useJobApplications = (): JobApplicationData => {
 
   // Set up real-time subscription for application status updates
   useEffect(() => {
-    if (!profile) return;
+    if (!profile || !user) return;
     
     const channel = supabase
       .channel('application-updates')
@@ -161,7 +178,7 @@ export const useJobApplications = (): JobApplicationData => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile]);
+  }, [profile, user]);
 
   useEffect(() => {
     if (profile) {

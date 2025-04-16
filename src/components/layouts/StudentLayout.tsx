@@ -4,11 +4,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Home, User, Briefcase, Bell, LogOut, FileText } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useStudentProfile } from '@/hooks/useStudentProfile';
 
 const StudentLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const { unreadCount, refreshData: refreshNotifications } = useNotifications();
+  const { profile, isLoading: profileLoading } = useStudentProfile();
 
   const navLinks = [
     { name: 'Dashboard', path: '/student/dashboard', icon: Home },
@@ -74,7 +76,7 @@ const StudentLayout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                 ))}
               </ul>
               
-              {user && !user.isVerified && (
+              {profile && !profile.is_verified && (
                 <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                   <div className="flex items-start">
                     <div className="text-yellow-700 text-sm">

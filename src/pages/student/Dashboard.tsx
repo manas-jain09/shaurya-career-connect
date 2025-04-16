@@ -1,79 +1,22 @@
+
 import React, { useEffect, useState } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, Clock, Briefcase, Building, Bell, FileText } from 'lucide-react';
+import { CheckCircle2, Clock, Briefcase, Bell, FileText } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
-import { JobPosting, JobPostingStatus, Notification } from '@/types/database.types';
+import { Notification } from '@/types/database.types';
 import { toast } from 'sonner';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { profile, isLoading: profileLoading } = useStudentProfile();
   const { applications, counts, isLoading: applicationsLoading } = useJobApplications();
-  const [recentJobs, setRecentJobs] = useState<JobPosting[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [jobsLoading, setJobsLoading] = useState(true);
   const [notificationsLoading, setNotificationsLoading] = useState(true);
-  const [eligibilityStatus, setEligibilityStatus] = useState<Record<string, boolean>>({});
-
-  // Fetch recent job postings
-  const fetchRecentJobs = async () => {
-    try {
-      setJobsLoading(true);
-      
-      const { data, error } = await supabase
-        .from('job_postings')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(3);
-        
-      if (error) throw error;
-      
-      // Type-cast the data
-      const typedJobs: JobPosting[] = data?.map(job => ({
-        ...job,
-        status: job.status as JobPostingStatus
-      })) || [];
-      
-      setRecentJobs(typedJobs);
-      
-      // Check eligibility for each job
-      if (profile) {
-        const eligibilityPromises = typedJobs.map(async (job) => {
-          const { data: eligData, error: eligError } = await supabase
-            .rpc('check_job_eligibility', {
-              p_student_id: profile.id,
-              p_job_id: job.id
-            });
-            
-          if (eligError) {
-            console.error('Error checking eligibility:', eligError);
-            return { jobId: job.id, eligible: false };
-          }
-          
-          return { jobId: job.id, eligible: eligData };
-        });
-        
-        const eligibilityResults = await Promise.all(eligibilityPromises);
-        const eligibilityMap = eligibilityResults.reduce((acc, curr) => {
-          acc[curr.jobId as string] = curr.eligible;
-          return acc;
-        }, {} as Record<string, boolean>);
-        
-        setEligibilityStatus(eligibilityMap);
-      }
-    } catch (error) {
-      console.error('Error fetching recent jobs:', error);
-      toast.error('Failed to load recent jobs');
-    } finally {
-      setJobsLoading(false);
-    }
-  };
 
   // Fetch recent notifications
   const fetchRecentNotifications = async () => {
@@ -129,18 +72,74 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (profile) {
-      fetchRecentJobs();
-    }
-  }, [profile]);
-
-  useEffect(() => {
     if (user) {
       fetchRecentNotifications();
     }
   }, [user]);
 
   const isLoading = profileLoading || applicationsLoading;
+
+  // Set up a real-time listener for new job postings
+  useEffect(() => {
+    if (!profile || !user) return;
+    
+    const channel = supabase
+      .channel('job-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'job_postings'
+        },
+        async (payload) => {
+          console.log('New job posting detected:', payload);
+          
+          // Check if the student is eligible for this job
+          const jobId = payload.new.id;
+          
+          if (profile.is_verified && profile.placement_interest === 'placement/internship') {
+            try {
+              const { data: isEligible, error } = await supabase
+                .rpc('check_job_eligibility', {
+                  p_student_id: profile.id,
+                  p_job_id: jobId
+                });
+                
+              if (error) throw error;
+              
+              if (isEligible) {
+                // Create a notification for the eligible job
+                const jobTitle = payload.new.title;
+                const companyName = payload.new.company_name;
+                
+                toast.info(`New job opportunity available: ${jobTitle} at ${companyName}`);
+                
+                // Insert notification into the database
+                await supabase
+                  .from('notifications')
+                  .insert({
+                    user_id: user.id,
+                    title: 'New Job Opportunity',
+                    message: `You are eligible for ${jobTitle} at ${companyName}. Check it out!`,
+                    is_read: false
+                  });
+                  
+                // Refresh notifications
+                fetchRecentNotifications();
+              }
+            } catch (error) {
+              console.error('Error checking job eligibility:', error);
+            }
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile, user]);
 
   return (
     <StudentLayout>
@@ -235,157 +234,101 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Recent Job Openings</CardTitle>
+              <CardTitle className="text-lg font-semibold">Application Status</CardTitle>
             </CardHeader>
             <CardContent>
-              {jobsLoading ? (
+              {applicationsLoading ? (
                 <div className="flex justify-center py-8">
                   <div className="animate-spin h-8 w-8 border-4 border-shaurya-primary border-t-transparent rounded-full"></div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {recentJobs.length > 0 ? (
-                    recentJobs.map((job) => {
-                      const isEligible = eligibilityStatus[job.id || ''] === true;
-                      
-                      return (
-                        <div key={job.id} className="border-b pb-4 last:border-b-0 last:pb-0">
+                <>
+                  {applications.length > 0 ? (
+                    <div className="space-y-4">
+                      {applications.slice(0, 3).map((app) => (
+                        <div key={app.id} className="border-b pb-4 last:border-b-0 last:pb-0">
                           <div className="flex justify-between items-start">
                             <div>
-                              <h3 className="font-medium text-gray-900">{job.title}</h3>
+                              <h3 className="font-medium text-gray-900">
+                                {app.job?.title || 'Job Title Unavailable'}
+                              </h3>
                               <p className="text-sm text-gray-500">
-                                {job.company_name} • {job.location}
+                                {app.job?.company_name || 'Company Unavailable'}
                               </p>
                             </div>
                             <div className="text-right">
-                              <span className="text-sm font-medium text-gray-900">{job.package}</span>
-                              <p className="text-xs text-gray-500">
-                                Deadline: {formatDate(job.application_deadline)}
+                              <span 
+                                className={`text-xs px-2 py-1 rounded ${
+                                  app.status === 'shortlisted' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : app.status === 'rejected'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                                }`}
+                              >
+                                {app.status.replace('_', ' ').charAt(0).toUpperCase() + app.status.replace('_', ' ').slice(1)}
+                              </span>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Applied: {formatDate(app.created_at || '')}
                               </p>
                             </div>
                           </div>
-                          <div className="mt-2 flex justify-between items-center">
-                            <span className={`text-xs px-2 py-1 rounded ${isEligible ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                              {isEligible ? 'Eligible' : 'Not Eligible'}
-                            </span>
-                            {isEligible && (
-                              <Link to="/student/jobs" className="text-xs text-shaurya-primary hover:underline">
-                                Apply Now
-                              </Link>
-                            )}
-                          </div>
                         </div>
-                      );
-                    })
+                      ))}
+                    </div>
                   ) : (
                     <div className="text-center py-6 text-gray-500">
-                      <p>No active job listings available</p>
+                      <p>No applications yet</p>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="mt-4 text-center">
+                <Link 
+                  to="/student/applications" 
+                  className="text-sm text-shaurya-primary hover:underline"
+                >
+                  View All Applications
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold">Recent Notifications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {notificationsLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-shaurya-primary border-t-transparent rounded-full"></div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div key={notification.id} className="border-b pb-3 last:border-b-0 last:pb-0">
+                        <p className="text-sm text-gray-800">{notification.message}</p>
+                        <p className="text-xs text-gray-500 mt-1">{formatTimeAgo(notification.created_at || '')}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-6 text-gray-500">
+                      <p>No notifications yet</p>
                     </div>
                   )}
                 </div>
               )}
               <div className="mt-4 text-center">
                 <Link 
-                  to="/student/jobs" 
+                  to="/student/notifications" 
                   className="text-sm text-shaurya-primary hover:underline"
                 >
-                  View All Jobs
+                  View All Notifications
                 </Link>
               </div>
             </CardContent>
           </Card>
-          
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Application Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {applicationsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin h-8 w-8 border-4 border-shaurya-primary border-t-transparent rounded-full"></div>
-                  </div>
-                ) : (
-                  <>
-                    {applications.length > 0 ? (
-                      <div className="space-y-4">
-                        {applications.slice(0, 3).map((app) => (
-                          <div key={app.id} className="border-b pb-4 last:border-b-0 last:pb-0">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h3 className="font-medium text-gray-900">
-                                  {app.job?.title || 'Job Title Unavailable'}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  {app.job?.company_name || 'Company Unavailable'}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <span 
-                                  className={`text-xs px-2 py-1 rounded ${
-                                    app.status === 'shortlisted' 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : app.status === 'rejected'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-yellow-100 text-yellow-800'
-                                  }`}
-                                >
-                                  {app.status.replace('_', ' ').charAt(0).toUpperCase() + app.status.replace('_', ' ').slice(1)}
-                                </span>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Applied: {formatDate(app.created_at || '')}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-gray-500">
-                        <p>No applications yet</p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Recent Notifications</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {notificationsLoading ? (
-                  <div className="flex justify-center py-8">
-                    <div className="animate-spin h-8 w-8 border-4 border-shaurya-primary border-t-transparent rounded-full"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {notifications.length > 0 ? (
-                      notifications.map((notification) => (
-                        <div key={notification.id} className="border-b pb-3 last:border-b-0 last:pb-0">
-                          <p className="text-sm text-gray-800">{notification.message}</p>
-                          <p className="text-xs text-gray-500 mt-1">{formatTimeAgo(notification.created_at || '')}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-6 text-gray-500">
-                        <p>No notifications yet</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="mt-4 text-center">
-                  <Link 
-                    to="/student/notifications" 
-                    className="text-sm text-shaurya-primary hover:underline"
-                  >
-                    View All Notifications
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
     </StudentLayout>
