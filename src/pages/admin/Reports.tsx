@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -938,7 +937,7 @@ const Reports = () => {
                             <SelectValue placeholder="Gender" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Genders</SelectItem>
+                            <SelectItem value="all">All Genders</SelectItem>
                             <SelectItem value="male">Male</SelectItem>
                             <SelectItem value="female">Female</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
@@ -953,7 +952,7 @@ const Reports = () => {
                             <SelectValue placeholder="Verification Status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Statuses</SelectItem>
+                            <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="verified">Verified</SelectItem>
                             <SelectItem value="unverified">Unverified</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
@@ -968,7 +967,7 @@ const Reports = () => {
                             <SelectValue placeholder="Placement Interest" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Interests</SelectItem>
+                            <SelectItem value="all">All Interests</SelectItem>
                             <SelectItem value="placement/internship">Placement/Internship</SelectItem>
                             <SelectItem value="higher_studies">Higher Studies</SelectItem>
                             <SelectItem value="family_business">Family Business</SelectItem>
@@ -984,7 +983,7 @@ const Reports = () => {
                             <SelectValue placeholder="Year of Passing" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Years</SelectItem>
+                            <SelectItem value="all">All Years</SelectItem>
                             {yearOptions.map(year => (
                               <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
                             ))}
@@ -1084,7 +1083,7 @@ const Reports = () => {
                             <SelectValue placeholder="Status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Statuses</SelectItem>
+                            <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="applied">Applied</SelectItem>
                             <SelectItem value="under_review">Under Review</SelectItem>
                             <SelectItem value="shortlisted">Shortlisted</SelectItem>
@@ -1102,7 +1101,7 @@ const Reports = () => {
                             <SelectValue placeholder="Company" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Companies</SelectItem>
+                            <SelectItem value="all">All Companies</SelectItem>
                             {companyOptions.map(company => (
                               <SelectItem key={company} value={company}>{company}</SelectItem>
                             ))}
@@ -1231,7 +1230,7 @@ const Reports = () => {
                             <SelectValue placeholder="Status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Statuses</SelectItem>
+                            <SelectItem value="all">All Statuses</SelectItem>
                             <SelectItem value="active">Active</SelectItem>
                             <SelectItem value="closed">Closed</SelectItem>
                             <SelectItem value="draft">Draft</SelectItem>
@@ -1246,7 +1245,7 @@ const Reports = () => {
                             <SelectValue placeholder="Company" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Companies</SelectItem>
+                            <SelectItem value="all">All Companies</SelectItem>
                             {companyOptions.map(company => (
                               <SelectItem key={company} value={company}>{company}</SelectItem>
                             ))}
@@ -1261,7 +1260,7 @@ const Reports = () => {
                             <SelectValue placeholder="Location" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">All Locations</SelectItem>
+                            <SelectItem value="all">All Locations</SelectItem>
                             {locationOptions.map(location => (
                               <SelectItem key={location} value={location}>{location}</SelectItem>
                             ))}
