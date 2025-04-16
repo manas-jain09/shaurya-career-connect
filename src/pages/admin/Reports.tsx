@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -788,8 +787,7 @@ const Reports = () => {
       'Package': app.job?.package || 'N/A',
       'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
       'Applied Date': app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A',
-      'Admin Notes': app.admin_notes || 'N/A',
-      'Offer Letter': app.offer_letter_url ? 'Available' : 'Not uploaded'
+      'Admin Notes': app.admin_notes || 'N/A'
     }));
   };
 
@@ -1211,13 +1209,12 @@ const Reports = () => {
                             <TableHead>
                               {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
                             </TableHead>
-                            <TableHead>Offer Letter</TableHead>
-                          </TableRow>
+                          </TableHead>
                         </TableHeader>
                         <TableBody>
                           {filteredApplications.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                              <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                                 No applications found
                               </TableCell>
                             </TableRow>
@@ -1267,20 +1264,6 @@ const Reports = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>{application.job?.package || 'N/A'}</TableCell>
-                                <TableCell>
-                                  {application.offer_letter_url ? (
-                                    <a 
-                                      href={application.offer_letter_url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:underline text-sm"
-                                    >
-                                      View
-                                    </a>
-                                  ) : (
-                                    <span className="text-gray-400 text-sm">None</span>
-                                  )}
-                                </TableCell>
                               </TableRow>
                             ))
                           )}

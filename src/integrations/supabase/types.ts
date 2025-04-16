@@ -361,7 +361,7 @@ export type Database = {
           gender: string
           id: string
           is_blocked: boolean | null
-          is_frozen: string | null
+          is_frozen: boolean | null
           is_verified: boolean
           last_name: string
           phone: string
@@ -382,7 +382,7 @@ export type Database = {
           gender: string
           id?: string
           is_blocked?: boolean | null
-          is_frozen?: string | null
+          is_frozen?: boolean | null
           is_verified?: boolean
           last_name: string
           phone: string
@@ -403,7 +403,7 @@ export type Database = {
           gender?: string
           id?: string
           is_blocked?: boolean | null
-          is_frozen?: string | null
+          is_frozen?: boolean | null
           is_verified?: boolean
           last_name?: string
           phone?: string

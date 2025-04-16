@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -169,12 +168,6 @@ const Applications = () => {
     try {
       setUpdatingStatus(true);
       
-      // Determine if we should freeze or unfreeze the profile
-      const shouldFreezeProfile = ['selected', 'internship', 'ppo', 'placement'].includes(newStatus);
-      const shouldUnfreezeProfile = ['applied', 'under_review', 'shortlisted', 'rejected'].includes(newStatus) && 
-                                   ['selected', 'internship', 'ppo', 'placement'].includes(selectedApplication.status);
-      
-      // Update application status
       const { error } = await supabase
         .from('job_applications')
         .update({
@@ -184,46 +177,6 @@ const Applications = () => {
         .eq('id', selectedApplication.id);
       
       if (error) throw error;
-      
-      // Update freeze status based on new application status
-      if (shouldFreezeProfile) {
-        console.log('Freezing profile');
-        const { error: freezeError } = await supabase
-          .from('student_profiles')
-          .update({
-            is_frozen: true,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', selectedApplication.student_id);
-        
-        if (freezeError) throw freezeError;
-        
-        // Auto-reject other applications
-        const { error: updateOtherAppsError } = await supabase
-          .from('job_applications')
-          .update({
-            status: 'rejected',
-            updated_at: new Date().toISOString()
-          })
-          .eq('student_id', selectedApplication.student_id)
-          .neq('id', selectedApplication.id)
-          .not('status', 'in', '("selected","internship","ppo","placement","rejected")');
-        
-        if (updateOtherAppsError) {
-          console.error('Error updating other applications:', updateOtherAppsError);
-        }
-      } else if (shouldUnfreezeProfile) {
-        console.log('Unfreezing profile');
-        const { error: unfreezeError } = await supabase
-          .from('student_profiles')
-          .update({
-            is_frozen: false,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', selectedApplication.student_id);
-        
-        if (unfreezeError) throw unfreezeError;
-      }
       
       toast({
         title: 'Success',
@@ -406,7 +359,6 @@ const Applications = () => {
         )}
       </div>
       
-      {/* Update Status Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -496,7 +448,6 @@ const Applications = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Opted Out Students Dialog */}
       <Dialog open={optedOutDialogOpen} onOpenChange={setOptedOutDialogOpen}>
         <DialogContent className="sm:max-w-4xl">
           <DialogHeader>

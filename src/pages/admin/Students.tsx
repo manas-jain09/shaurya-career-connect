@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { 
@@ -76,7 +75,10 @@ const Students = () => {
         throw error;
       }
 
-      setStudents(data || []);
+      setStudents(data?.map(student => ({
+        ...student,
+        is_frozen: student.is_frozen === true
+      })) || []);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast({

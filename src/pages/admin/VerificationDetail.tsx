@@ -63,7 +63,10 @@ const VerificationDetail = () => {
         .single();
 
       if (profileError) throw profileError;
-      setProfile(profileData);
+      setProfile({
+        ...profileData,
+        is_frozen: profileData.is_frozen === true // Ensure boolean type
+      });
       setNotes(profileData.verification_notes || '');
       
       if (profileData.flagged_sections) {

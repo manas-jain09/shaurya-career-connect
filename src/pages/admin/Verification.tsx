@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -61,7 +60,10 @@ const Verification = () => {
         throw error;
       }
 
-      setProfiles(data || []);
+      setProfiles(data?.map(profile => ({
+        ...profile,
+        is_frozen: profile.is_frozen === true // Ensure boolean type
+      })) || []);
     } catch (error) {
       console.error('Error fetching profiles:', error);
       toast({
