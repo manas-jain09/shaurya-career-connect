@@ -18,7 +18,9 @@ import {
   XCircle,
   Clock,
   FileCheck,
-  Calendar
+  Calendar,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
@@ -32,6 +34,7 @@ const Verification = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [blockingStudent, setBlockingStudent] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -68,6 +71,59 @@ const Verification = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleBlockStatus = async (profileId: string, currentBlockedStatus: boolean) => {
+    setBlockingStudent(profileId);
+    try {
+      const { error } = await supabase
+        .from('student_profiles')
+        .update({ 
+          is_blocked: !currentBlockedStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', profileId);
+
+      if (error) throw error;
+
+      // Create notification for the student
+      const { data: profileData } = await supabase
+        .from('student_profiles')
+        .select('user_id')
+        .eq('id', profileId)
+        .single();
+
+      if (profileData) {
+        const notificationData = {
+          user_id: profileData.user_id,
+          title: currentBlockedStatus ? 'Account Unblocked' : 'Account Blocked',
+          message: currentBlockedStatus 
+            ? 'Your account has been unblocked. You can now apply for jobs.'
+            : 'Your account has been blocked. Please contact the administrator for more information.',
+          is_read: false,
+          created_at: new Date().toISOString()
+        };
+
+        await supabase.from('notifications').insert(notificationData);
+      }
+
+      toast({
+        title: 'Success',
+        description: `Student ${currentBlockedStatus ? 'unblocked' : 'blocked'} successfully`
+      });
+
+      // Refresh profiles
+      fetchProfiles();
+    } catch (error) {
+      console.error('Error toggling block status:', error);
+      toast({
+        title: 'Error',
+        description: `Failed to ${currentBlockedStatus ? 'unblock' : 'block'} student`,
+        variant: 'destructive',
+      });
+    } finally {
+      setBlockingStudent(null);
     }
   };
 
@@ -148,7 +204,8 @@ const Verification = () => {
                       <TableHead>Gender</TableHead>
                       <TableHead>Submission Date</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Action</TableHead>
+                      <TableHead>Block Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -167,13 +224,51 @@ const Verification = () => {
                         </TableCell>
                         <TableCell>{getStatusBadge(profile.verification_status)}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/admin/verification/${profile.id}`)}
-                          >
-                            <FileCheck size={16} className="mr-1" /> Review
-                          </Button>
+                          {profile.is_blocked ? (
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                              <Lock size={14} className="mr-1" /> Blocked
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <Unlock size={14} className="mr-1" /> Active
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/admin/verification/${profile.id}`)}
+                            >
+                              <FileCheck size={16} className="mr-1" /> Review
+                            </Button>
+                            <Button
+                              variant={profile.is_blocked ? "outline" : "destructive"}
+                              size="sm"
+                              disabled={blockingStudent === profile.id}
+                              onClick={() => toggleBlockStatus(profile.id, profile.is_blocked || false)}
+                            >
+                              {blockingStudent === profile.id ? (
+                                <span className="flex items-center">
+                                  <div className="h-3 w-3 mr-1 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                                  Loading...
+                                </span>
+                              ) : (
+                                <>
+                                  {profile.is_blocked ? (
+                                    <>
+                                      <Unlock size={16} className="mr-1" /> Unblock
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Lock size={16} className="mr-1" /> Block
+                                    </>
+                                  )}
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

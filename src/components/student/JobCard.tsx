@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertCircle } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface JobCardProps {
   job: JobPosting;
@@ -182,44 +183,46 @@ const JobCard: React.FC<JobCardProps> = ({
             <DialogDescription>{job.company_name}</DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div>
-              <h4 className="font-medium text-sm text-gray-500">Description</h4>
-              <div className="mt-1 whitespace-pre-line">{job.description}</div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
+          <ScrollArea className="max-h-[60vh] overflow-auto pr-3">
+            <div className="space-y-4">
               <div>
-                <h4 className="font-medium text-sm text-gray-500">Location</h4>
-                <p>{job.location}</p>
+                <h4 className="font-medium text-sm text-gray-500">Description</h4>
+                <div className="mt-1 whitespace-pre-line">{job.description}</div>
               </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-sm text-gray-500">Location</h4>
+                  <p>{job.location}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-sm text-gray-500">Package</h4>
+                  <p>{job.package}</p>
+                </div>
+              </div>
+              
               <div>
-                <h4 className="font-medium text-sm text-gray-500">Package</h4>
-                <p>{job.package}</p>
+                <h4 className="font-medium text-sm text-gray-500">Application Deadline</h4>
+                <p>{formatDate(job.application_deadline)}</p>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-sm text-gray-500">Eligibility Requirements</h4>
+                <ul className="mt-1 ml-5 list-disc space-y-1">
+                  {job.min_class_x_marks && <li>Class X: Minimum {job.min_class_x_marks}%</li>}
+                  {job.min_class_xii_marks && <li>Class XII: Minimum {job.min_class_xii_marks}%</li>}
+                  {job.min_graduation_marks && <li>Graduation: Minimum {job.min_graduation_marks}%</li>}
+                  {job.allow_backlog === false && <li>No backlogs allowed</li>}
+                  {job.eligible_courses && job.eligible_courses.length > 0 && (
+                    <li>Eligible Courses: {job.eligible_courses.join(', ')}</li>
+                  )}
+                  {job.eligible_passing_years && job.eligible_passing_years.length > 0 && (
+                    <li>Eligible Passing Years: {job.eligible_passing_years.join(', ')}</li>
+                  )}
+                </ul>
               </div>
             </div>
-            
-            <div>
-              <h4 className="font-medium text-sm text-gray-500">Application Deadline</h4>
-              <p>{formatDate(job.application_deadline)}</p>
-            </div>
-            
-            <div>
-              <h4 className="font-medium text-sm text-gray-500">Eligibility Requirements</h4>
-              <ul className="mt-1 ml-5 list-disc space-y-1">
-                {job.min_class_x_marks && <li>Class X: Minimum {job.min_class_x_marks}%</li>}
-                {job.min_class_xii_marks && <li>Class XII: Minimum {job.min_class_xii_marks}%</li>}
-                {job.min_graduation_marks && <li>Graduation: Minimum {job.min_graduation_marks}%</li>}
-                {job.allow_backlog === false && <li>No backlogs allowed</li>}
-                {job.eligible_courses && job.eligible_courses.length > 0 && (
-                  <li>Eligible Courses: {job.eligible_courses.join(', ')}</li>
-                )}
-                {job.eligible_passing_years && job.eligible_passing_years.length > 0 && (
-                  <li>Eligible Passing Years: {job.eligible_passing_years.join(', ')}</li>
-                )}
-              </ul>
-            </div>
-          </div>
+          </ScrollArea>
           
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>Close</Button>

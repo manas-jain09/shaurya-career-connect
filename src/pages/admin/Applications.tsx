@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -34,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
 import { Loader2, Search, FileDown, Filter, Upload } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const statusColors: Record<JobApplicationStatus, string> = {
   'applied': 'bg-blue-100 text-blue-800',
@@ -43,6 +43,7 @@ const statusColors: Record<JobApplicationStatus, string> = {
   'selected': 'bg-purple-100 text-purple-800',
   'internship': 'bg-indigo-100 text-indigo-800',
   'ppo': 'bg-pink-100 text-pink-800',
+  'placement': 'bg-teal-100 text-teal-800',
 };
 
 const StatusBadge: React.FC<{ status: JobApplicationStatus }> = ({ status }) => {
@@ -109,7 +110,6 @@ const Applications = () => {
   useEffect(() => {
     let filtered = applications;
     
-    // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(app => 
@@ -120,7 +120,6 @@ const Applications = () => {
       );
     }
     
-    // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(app => app.status === statusFilter);
     }
@@ -148,19 +147,16 @@ const Applications = () => {
     try {
       setUploadingOfferLetter(true);
       
-      // Create a unique filename using the application ID and timestamp
       const fileExt = offerLetterFile.name.split('.').pop();
       const fileName = `${selectedApplication.id}-${Date.now()}.${fileExt}`;
       const filePath = `offer-letters/${fileName}`;
       
-      // Upload file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(filePath, offerLetterFile);
       
       if (uploadError) throw uploadError;
       
-      // Get the public URL
       const { data } = supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
@@ -187,16 +183,17 @@ const Applications = () => {
     try {
       setUpdatingStatus(true);
       
-      // Upload offer letter if file is selected and status is selected, internship, or ppo
       let offerLetterUrl = selectedApplication.offer_letter_url;
-      if (offerLetterFile && ['selected', 'internship', 'ppo'].includes(newStatus)) {
+      if (offerLetterFile && ['selected', 'internship', 'ppo', 'placement'].includes(newStatus)) {
         const uploadedUrl = await uploadOfferLetter();
         if (uploadedUrl) {
           offerLetterUrl = uploadedUrl;
         }
       }
       
-      // Update application status
+      const shouldFreezeProfile = ['selected', 'internship', 'ppo', 'placement'].includes(newStatus) && 
+                                 !['selected', 'internship', 'ppo', 'placement'].includes(selectedApplication.status);
+      
       const { error } = await supabase
         .from('job_applications')
         .update({
@@ -209,8 +206,37 @@ const Applications = () => {
       
       if (error) throw error;
       
-      // Create notification for the student
-      const statusDisplay = newStatus === 'ppo' ? 'PPO' : newStatus.replace('_', ' ');
+      if (shouldFreezeProfile) {
+        const { error: freezeError } = await supabase
+          .from('student_profiles')
+          .update({
+            is_frozen: true,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedApplication.student_id);
+        
+        if (freezeError) throw freezeError;
+        
+        const { error: updateOtherAppsError } = await supabase
+          .from('job_applications')
+          .update({
+            status: 'rejected',
+            admin_notes: `Automatically rejected because student was ${newStatus} for another position`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('student_id', selectedApplication.student_id)
+          .neq('id', selectedApplication.id)
+          .not('status', 'in', '("selected","internship","ppo","placement","rejected")');
+        
+        if (updateOtherAppsError) {
+          console.error('Error updating other applications:', updateOtherAppsError);
+        }
+      }
+      
+      const statusDisplay = newStatus === 'ppo' ? 'PPO' : 
+                            newStatus === 'placement' ? 'Placement' : 
+                            newStatus.replace('_', ' ');
+      
       const notificationData = {
         user_id: selectedApplication.student_id,
         title: 'Application Status Updated',
@@ -225,12 +251,23 @@ const Applications = () => {
       
       if (notificationError) throw notificationError;
       
+      if (shouldFreezeProfile) {
+        const frozenNotificationData = {
+          user_id: selectedApplication.student_id,
+          title: 'Profile Frozen',
+          message: `Your profile has been frozen because you have been ${newStatus} for ${selectedApplication.job?.title} at ${selectedApplication.job?.company_name}. You can no longer apply for other positions.`,
+          is_read: false,
+          created_at: new Date().toISOString()
+        };
+        
+        await supabase.from('notifications').insert(frozenNotificationData);
+      }
+      
       toast({
         title: 'Success',
         description: 'Application status updated successfully'
       });
       
-      // Refresh applications
       fetchApplications();
       setDialogOpen(false);
     } catch (error) {
@@ -304,6 +341,7 @@ const Applications = () => {
                 <SelectItem value="selected">Selected</SelectItem>
                 <SelectItem value="internship">Internship</SelectItem>
                 <SelectItem value="ppo">PPO</SelectItem>
+                <SelectItem value="placement">Placement</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -418,81 +456,87 @@ const Applications = () => {
               </div>
             )}
             
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Application Status</Label>
-                <RadioGroup 
-                  value={newStatus} 
-                  onValueChange={(value) => setNewStatus(value as JobApplicationStatus)}
-                  className="flex flex-col space-y-2"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="applied" id="applied" />
-                    <Label htmlFor="applied">Applied</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="under_review" id="under_review" />
-                    <Label htmlFor="under_review">Under Review</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="shortlisted" id="shortlisted" />
-                    <Label htmlFor="shortlisted">Shortlisted</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="rejected" id="rejected" />
-                    <Label htmlFor="rejected">Rejected</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="selected" id="selected" />
-                    <Label htmlFor="selected">Selected</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="internship" id="internship" />
-                    <Label htmlFor="internship">Internship</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="ppo" id="ppo" />
-                    <Label htmlFor="ppo">PPO</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-              
-              {['selected', 'internship', 'ppo'].includes(newStatus) && (
+            <ScrollArea className="max-h-[60vh] overflow-auto pr-3">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="offer_letter">Offer Letter</Label>
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      id="offer_letter"
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleFileChange}
-                    />
-                    {selectedApplication?.offer_letter_url && (
-                      <a 
-                        href={selectedApplication.offer_letter_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        className="text-blue-600 hover:underline text-sm whitespace-nowrap"
-                      >
-                        View current
-                      </a>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500">Upload offer letter in PDF or DOC format</p>
+                  <Label>Application Status</Label>
+                  <RadioGroup 
+                    value={newStatus} 
+                    onValueChange={(value) => setNewStatus(value as JobApplicationStatus)}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="applied" id="applied" />
+                      <Label htmlFor="applied">Applied</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="under_review" id="under_review" />
+                      <Label htmlFor="under_review">Under Review</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="shortlisted" id="shortlisted" />
+                      <Label htmlFor="shortlisted">Shortlisted</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="rejected" id="rejected" />
+                      <Label htmlFor="rejected">Rejected</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="selected" id="selected" />
+                      <Label htmlFor="selected">Selected</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="internship" id="internship" />
+                      <Label htmlFor="internship">Internship</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="ppo" id="ppo" />
+                      <Label htmlFor="ppo">PPO</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="placement" id="placement" />
+                      <Label htmlFor="placement">Placement</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label htmlFor="admin_notes">Admin Notes</Label>
-                <Textarea
-                  id="admin_notes"
-                  value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
-                  placeholder="Add notes about this application..."
-                  rows={4}
-                />
+                
+                {['selected', 'internship', 'ppo', 'placement'].includes(newStatus) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="offer_letter">Offer Letter</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        id="offer_letter"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleFileChange}
+                      />
+                      {selectedApplication?.offer_letter_url && (
+                        <a 
+                          href={selectedApplication.offer_letter_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-blue-600 hover:underline text-sm whitespace-nowrap"
+                        >
+                          View current
+                        </a>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">Upload offer letter in PDF or DOC format</p>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  <Label htmlFor="admin_notes">Admin Notes</Label>
+                  <Textarea
+                    id="admin_notes"
+                    value={adminNotes}
+                    onChange={(e) => setAdminNotes(e.target.value)}
+                    placeholder="Add notes about this application..."
+                    rows={4}
+                  />
+                </div>
               </div>
-            </div>
+            </ScrollArea>
           </div>
           
           <div className="flex justify-end space-x-2">

@@ -4,7 +4,7 @@ import StudentLayout from '@/components/layouts/StudentLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, AlertCircle, Lock } from 'lucide-react';
+import { Search, AlertCircle, Lock, CheckCircle2 } from 'lucide-react';
 import JobCard from '@/components/student/JobCard';
 import { JobPosting } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
@@ -98,6 +98,7 @@ const Jobs = () => {
   const hasNoPlacementInterest = profile ? profile.placement_interest !== 'placement/internship' : true;
   const hasFlaggedSections = profile?.flagged_sections && profile.flagged_sections.length > 0;
   const isBlocked = profile?.is_blocked || false;
+  const isFrozen = profile?.is_frozen || false;
 
   if (isProfileNotVerified || hasNoPlacementInterest) {
     return (
@@ -151,6 +152,20 @@ const Jobs = () => {
           </Card>
         )}
         
+        {isFrozen && !isBlocked && (
+          <Card className="bg-amber-50 border-amber-200">
+            <CardContent className="p-4 flex items-center space-x-3">
+              <CheckCircle2 className="h-5 w-5 text-amber-600" />
+              <div>
+                <h3 className="font-semibold text-amber-700">Your profile is frozen</h3>
+                <p className="text-sm text-amber-600">
+                  You have been selected for a position. Your profile is now frozen and you cannot apply for more jobs.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
@@ -185,9 +200,9 @@ const Jobs = () => {
                 job={job}
                 isApplied={isJobApplied(job.id)}
                 isProfileVerified={!isProfileNotVerified}
-                isFlaggedProfile={hasFlaggedSections || isBlocked}
+                isFlaggedProfile={hasFlaggedSections || isBlocked || isFrozen}
                 onApply={handleApplySuccess}
-                isEligible={!isBlocked && (jobEligibility[job.id as string] || false)}
+                isEligible={!isBlocked && !isFrozen && (jobEligibility[job.id as string] || false)}
               />
             ))}
           </div>

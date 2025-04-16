@@ -20,6 +20,7 @@ interface JobApplicationData {
     selected: number;
     internship: number;
     ppo: number;
+    placement: number;
   };
   canApply: boolean;
 }
@@ -38,7 +39,8 @@ export const useJobApplications = (): JobApplicationData => {
     rejected: 0,
     selected: 0,
     internship: 0,
-    ppo: 0
+    ppo: 0,
+    placement: 0
   });
   const [canApply, setCanApply] = useState(false);
   const [previousApplications, setPreviousApplications] = useState<JobApplication[]>([]);
@@ -53,8 +55,8 @@ export const useJobApplications = (): JobApplicationData => {
     setError(null);
 
     try {
-      // Set canApply based on profile eligibility
-      setCanApply(isEligibleForJobs);
+      // Set canApply based on profile eligibility and whether the profile is frozen
+      setCanApply(isEligibleForJobs && !profile.is_frozen && !profile.is_blocked);
       
       // Fetch applications with job details
       const { data, error: fetchError } = await supabase
@@ -114,6 +116,9 @@ export const useJobApplications = (): JobApplicationData => {
               case 'ppo':
                 statusMessage = 'has been converted to PPO! Congratulations!';
                 break;
+              case 'placement':
+                statusMessage = 'has been converted to placement! Congratulations!';
+                break;
               default:
                 statusMessage = 'status has been updated';
             }
@@ -154,6 +159,7 @@ export const useJobApplications = (): JobApplicationData => {
         const selected = typedApplications.filter(app => app.status === 'selected').length;
         const internship = typedApplications.filter(app => app.status === 'internship').length;
         const ppo = typedApplications.filter(app => app.status === 'ppo').length;
+        const placement = typedApplications.filter(app => app.status === 'placement').length;
         
         setCounts({
           total,
@@ -163,7 +169,8 @@ export const useJobApplications = (): JobApplicationData => {
           rejected,
           selected,
           internship,
-          ppo
+          ppo,
+          placement
         });
       } else {
         setCounts({
@@ -174,7 +181,8 @@ export const useJobApplications = (): JobApplicationData => {
           rejected: 0,
           selected: 0,
           internship: 0,
-          ppo: 0
+          ppo: 0,
+          placement: 0
         });
       }
     } catch (err) {
