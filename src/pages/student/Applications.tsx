@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
-import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock } from 'lucide-react';
+import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, FileDown, GraduationCap, Award } from 'lucide-react';
 
 const statusDisplayConfig = {
   applied: {
@@ -33,6 +33,16 @@ const statusDisplayConfig = {
     label: 'Rejected',
     color: 'bg-red-100 text-red-800',
     icon: <XCircle className="h-4 w-4 text-red-500" />
+  },
+  internship: {
+    label: 'Internship',
+    color: 'bg-indigo-100 text-indigo-800',
+    icon: <GraduationCap className="h-4 w-4 text-indigo-500" />
+  },
+  ppo: {
+    label: 'PPO',
+    color: 'bg-pink-100 text-pink-800',
+    icon: <Award className="h-4 w-4 text-pink-500" />
   }
 };
 
@@ -73,7 +83,7 @@ const Applications = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
           <Card className="bg-gray-50">
             <CardContent className="p-4 flex flex-col items-center justify-center">
               <div className="text-3xl font-bold">{counts.total}</div>
@@ -92,16 +102,28 @@ const Applications = () => {
               <div className="text-sm text-yellow-600">Under Review</div>
             </CardContent>
           </Card>
+          <Card className="bg-purple-50">
+            <CardContent className="p-4 flex flex-col items-center justify-center">
+              <div className="text-3xl font-bold text-purple-600">{counts.shortlisted}</div>
+              <div className="text-sm text-purple-600">Shortlisted</div>
+            </CardContent>
+          </Card>
           <Card className="bg-green-50">
             <CardContent className="p-4 flex flex-col items-center justify-center">
               <div className="text-3xl font-bold text-green-600">{counts.selected}</div>
               <div className="text-sm text-green-600">Selected</div>
             </CardContent>
           </Card>
-          <Card className="bg-red-50">
+          <Card className="bg-indigo-50">
             <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-red-600">{counts.rejected}</div>
-              <div className="text-sm text-red-600">Rejected</div>
+              <div className="text-3xl font-bold text-indigo-600">{counts.internship || 0}</div>
+              <div className="text-sm text-indigo-600">Internship</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-pink-50">
+            <CardContent className="p-4 flex flex-col items-center justify-center">
+              <div className="text-3xl font-bold text-pink-600">{counts.ppo || 0}</div>
+              <div className="text-sm text-pink-600">PPO</div>
             </CardContent>
           </Card>
         </div>
@@ -146,9 +168,23 @@ const Applications = () => {
                       </div>
                     </div>
                     
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-500">Applied On</p>
-                      <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
+                    <div className="mt-4 flex justify-between items-end">
+                      <div>
+                        <p className="text-sm text-gray-500">Applied On</p>
+                        <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
+                      </div>
+                      
+                      {application.offer_letter_url && ['selected', 'internship', 'ppo'].includes(application.status) && (
+                        <a 
+                          href={application.offer_letter_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-blue-600 hover:text-blue-800"
+                        >
+                          <FileDown className="h-4 w-4 mr-1" />
+                          <span>Download Offer Letter</span>
+                        </a>
+                      )}
                     </div>
                   </div>
                 </div>

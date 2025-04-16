@@ -18,6 +18,8 @@ interface JobApplicationData {
     shortlisted: number;
     rejected: number;
     selected: number;
+    internship: number;
+    ppo: number;
   };
   canApply: boolean;
 }
@@ -34,7 +36,9 @@ export const useJobApplications = (): JobApplicationData => {
     underReview: 0,
     shortlisted: 0,
     rejected: 0,
-    selected: 0
+    selected: 0,
+    internship: 0,
+    ppo: 0
   });
   const [canApply, setCanApply] = useState(false);
   const [previousApplications, setPreviousApplications] = useState<JobApplication[]>([]);
@@ -104,6 +108,12 @@ export const useJobApplications = (): JobApplicationData => {
               case 'selected':
                 statusMessage = 'has been selected! Congratulations!';
                 break;
+              case 'internship':
+                statusMessage = 'has been selected for internship! Congratulations!';
+                break;
+              case 'ppo':
+                statusMessage = 'has been converted to PPO! Congratulations!';
+                break;
               default:
                 statusMessage = 'status has been updated';
             }
@@ -142,6 +152,8 @@ export const useJobApplications = (): JobApplicationData => {
         const shortlisted = typedApplications.filter(app => app.status === 'shortlisted').length;
         const rejected = typedApplications.filter(app => app.status === 'rejected').length;
         const selected = typedApplications.filter(app => app.status === 'selected').length;
+        const internship = typedApplications.filter(app => app.status === 'internship').length;
+        const ppo = typedApplications.filter(app => app.status === 'ppo').length;
         
         setCounts({
           total,
@@ -149,7 +161,9 @@ export const useJobApplications = (): JobApplicationData => {
           underReview,
           shortlisted,
           rejected,
-          selected
+          selected,
+          internship,
+          ppo
         });
       } else {
         setCounts({
@@ -158,7 +172,9 @@ export const useJobApplications = (): JobApplicationData => {
           underReview: 0,
           shortlisted: 0,
           rejected: 0,
-          selected: 0
+          selected: 0,
+          internship: 0,
+          ppo: 0
         });
       }
     } catch (err) {

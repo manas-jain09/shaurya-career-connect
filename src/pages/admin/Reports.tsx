@@ -5,168 +5,118 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { 
-  BarChart as BarChartIcon, 
-  PieChart as PieChartIcon,
-  Calendar,
-  Download,
-  BarChart2,
-  FileSpreadsheet
+  Download, 
+  Users, 
+  Briefcase, 
+  FileSpreadsheet,
+  Filter,
+  Search,
+  CalendarIcon
 } from 'lucide-react';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { format } from 'date-fns';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Badge } from '@/components/ui/badge';
+import { CSVLink } from 'react-csv';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-
-// Chart colors
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#8dd1e1'];
+import { JobApplication, JobApplicationStatus, StudentProfile } from '@/types/database.types';
 
 const Reports = () => {
-  const [departmentData, setDepartmentData] = useState<any[]>([]);
-  const [companyData, setCompanyData] = useState<any[]>([]);
-  const [statusData, setStatusData] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('students');
+  
+  // Students data
+  const [students, setStudents] = useState<any[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [studentVerificationFilter, setStudentVerificationFilter] = useState('all');
+  const [studentCourseFilter, setStudentCourseFilter] = useState('all');
+  const [studentPassingYearFilter, setStudentPassingYearFilter] = useState('all');
+  const [courses, setCourses] = useState<string[]>([]);
+  const [passingYears, setPassingYears] = useState<number[]>([]);
+  
+  // Applications data
+  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
+  const [applicationSearch, setApplicationSearch] = useState('');
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
+  const [applicationDateFilter, setApplicationDateFilter] = useState<Date | undefined>(undefined);
+  
+  // Jobs data
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [filteredJobs, setFilteredJobs] = useState<any[]>([]);
+  const [jobSearch, setJobSearch] = useState('');
+  const [jobStatusFilter, setJobStatusFilter] = useState('all');
+  const [jobDeadlineFilter, setJobDeadlineFilter] = useState<Date | undefined>(undefined);
+  
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchReportData();
-  }, []);
+    if (activeTab === 'students') {
+      fetchStudentsData();
+    } else if (activeTab === 'applications') {
+      fetchApplicationsData();
+    } else if (activeTab === 'jobs') {
+      fetchJobsData();
+    }
+  }, [activeTab]);
 
-  const fetchReportData = async () => {
+  const fetchStudentsData = async () => {
     setLoading(true);
     try {
-      // Fetch data for placement by department (simplified example)
-      const { data: graduationData, error: gradError } = await supabase
-        .from('graduation_details')
+      // Fetch students with their profiles and graduation details
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('student_profiles')
         .select(`
-          course,
-          student_id,
-          student_profiles!graduation_details_student_id_fkey(is_verified)
+          *,
+          graduation:id(
+            course,
+            passing_year,
+            college_name,
+            marks,
+            is_cgpa
+          )
         `);
 
-      if (gradError) throw gradError;
+      if (studentsError) throw studentsError;
 
-      // Count students by course
-      const departmentCounts: Record<string, { total: number, placed: number }> = {};
+      // Get unique courses and passing years for filters
+      const allCourses = new Set<string>();
+      const allPassingYears = new Set<number>();
       
-      // Get all applications to determine placed students
-      const { data: applications, error: appError } = await supabase
-        .from('job_applications')
-        .select('student_id, status');
-      
-      if (appError) throw appError;
-
-      // Map of student IDs who are placed (selected)
-      const placedStudents = new Set(
-        applications
-          ?.filter(app => app.status === 'selected')
-          .map(app => app.student_id) || []
-      );
-
-      // Process graduation data to get department stats
-      graduationData?.forEach(grad => {
-        const course = grad.course;
-        const isVerified = grad.student_profiles?.is_verified;
-        const isPlaced = placedStudents.has(grad.student_id);
-        
-        if (!departmentCounts[course]) {
-          departmentCounts[course] = { total: 0, placed: 0 };
+      studentsData?.forEach(student => {
+        if (student.graduation?.course) {
+          allCourses.add(student.graduation.course);
         }
-        
-        if (isVerified) {
-          departmentCounts[course].total++;
-          
-          if (isPlaced) {
-            departmentCounts[course].placed++;
-          }
+        if (student.graduation?.passing_year) {
+          allPassingYears.add(student.graduation.passing_year);
         }
       });
-
-      // Convert to array format for chart
-      const deptData = Object.keys(departmentCounts).map(course => ({
-        name: course,
-        total: departmentCounts[course].total,
-        placed: departmentCounts[course].placed
-      }));
       
-      setDepartmentData(deptData);
-
-      // Fetch data for placement by company
-      const { data: jobsData, error: jobsError } = await supabase
-        .from('job_applications')
-        .select(`
-          status,
-          job:job_id(company_name)
-        `)
-        .eq('status', 'selected');
-
-      if (jobsError) throw jobsError;
-
-      // Count placements by company
-      const companyCounts: Record<string, number> = {};
+      setCourses(Array.from(allCourses).sort());
+      setPassingYears(Array.from(allPassingYears).sort());
       
-      jobsData?.forEach(app => {
-        const company = app.job?.company_name || 'Unknown';
-        
-        if (!companyCounts[company]) {
-          companyCounts[company] = 0;
-        }
-        
-        companyCounts[company]++;
-      });
-
-      // Convert to array format for chart
-      const compData = Object.keys(companyCounts).map(company => ({
-        name: company,
-        value: companyCounts[company]
-      }));
-      
-      setCompanyData(compData);
-
-      // Application status distribution
-      const { data: statusDistData, error: statusError } = await supabase
-        .from('job_applications')
-        .select('status');
-
-      if (statusError) throw statusError;
-
-      // Count applications by status
-      const statusCounts: Record<string, number> = {
-        applied: 0,
-        under_review: 0,
-        shortlisted: 0,
-        selected: 0,
-        rejected: 0
-      };
-      
-      statusDistData?.forEach(app => {
-        if (statusCounts[app.status] !== undefined) {
-          statusCounts[app.status]++;
-        }
-      });
-
-      // Convert to array format for chart
-      const statData = Object.keys(statusCounts).map(status => ({
-        name: status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '),
-        value: statusCounts[status]
-      }));
-      
-      setStatusData(statData);
+      setStudents(studentsData || []);
+      setFilteredStudents(studentsData || []);
     } catch (error) {
-      console.error('Error fetching report data:', error);
+      console.error('Error fetching students data:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load report data',
+        description: 'Failed to load students data',
         variant: 'destructive',
       });
     } finally {
@@ -174,90 +124,249 @@ const Reports = () => {
     }
   };
 
-  const exportDepartmentData = () => {
-    if (departmentData.length === 0) {
-      toast({
-        title: "No Data",
-        description: "There is no department data to export",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // CSV Headers
-    let csvContent = "Department,Total Students,Placed Students,Placement Rate\n";
-    
-    // Add rows
-    departmentData.forEach(dept => {
-      const placementRate = dept.total > 0 
-        ? ((dept.placed / dept.total) * 100).toFixed(2) + '%'
-        : '0%';
+  const fetchApplicationsData = async () => {
+    setLoading(true);
+    try {
+      const { data: applicationsData, error: applicationsError } = await supabase
+        .from('job_applications')
+        .select(`
+          *,
+          job:job_id(title, company_name, location, package),
+          student_profile:student_id(first_name, last_name, phone, is_verified)
+        `)
+        .order('created_at', { ascending: false });
       
-      csvContent += `"${dept.name}","${dept.total}","${dept.placed}","${placementRate}"\n`;
-    });
-    
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "department_placement.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportCompanyData = () => {
-    if (companyData.length === 0) {
+      if (applicationsError) throw applicationsError;
+      
+      setApplications(applicationsData as JobApplication[] || []);
+      setFilteredApplications(applicationsData as JobApplication[] || []);
+    } catch (error) {
+      console.error('Error fetching applications data:', error);
       toast({
-        title: "No Data",
-        description: "There is no company data to export",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to load applications data',
+        variant: 'destructive',
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-    
-    // CSV Headers
-    let csvContent = "Company,Placements\n";
-    
-    // Add rows
-    companyData.forEach(company => {
-      csvContent += `"${company.name}","${company.value}"\n`;
-    });
-    
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "company_placement.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border rounded shadow-sm">
-          <p className="font-medium text-gray-700">{label}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={`item-${index}`} style={{ color: entry.color }}>
-              {entry.name}: {entry.value}
-            </p>
-          ))}
-        </div>
+  const fetchJobsData = async () => {
+    setLoading(true);
+    try {
+      const { data: jobsData, error: jobsError } = await supabase
+        .from('job_postings')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (jobsError) throw jobsError;
+      
+      // Fetch application counts for each job
+      const jobsWithCounts = await Promise.all(
+        (jobsData || []).map(async (job) => {
+          const { count, error } = await supabase
+            .from('job_applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('job_id', job.id);
+          
+          return {
+            ...job,
+            application_count: count || 0
+          };
+        })
+      );
+      
+      setJobs(jobsWithCounts);
+      setFilteredJobs(jobsWithCounts);
+    } catch (error) {
+      console.error('Error fetching jobs data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load jobs data',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Apply students filters
+  useEffect(() => {
+    let filtered = students;
+    
+    // Filter by search term
+    if (studentSearch) {
+      const term = studentSearch.toLowerCase();
+      filtered = filtered.filter(student => 
+        student.first_name?.toLowerCase().includes(term) ||
+        student.last_name?.toLowerCase().includes(term) ||
+        student.phone?.toLowerCase().includes(term) ||
+        student.graduation?.college_name?.toLowerCase().includes(term)
       );
     }
-  
-    return null;
+    
+    // Filter by verification status
+    if (studentVerificationFilter !== 'all') {
+      filtered = filtered.filter(student => {
+        if (studentVerificationFilter === 'verified') {
+          return student.is_verified === true;
+        } else if (studentVerificationFilter === 'pending') {
+          return student.is_verified === false && student.verification_status === 'pending';
+        } else if (studentVerificationFilter === 'flagged') {
+          return student.is_verified === false && student.flagged_sections && student.flagged_sections.length > 0;
+        } else if (studentVerificationFilter === 'blocked') {
+          return student.is_blocked === true;
+        }
+        return true;
+      });
+    }
+    
+    // Filter by course
+    if (studentCourseFilter !== 'all') {
+      filtered = filtered.filter(student => 
+        student.graduation?.course === studentCourseFilter
+      );
+    }
+    
+    // Filter by passing year
+    if (studentPassingYearFilter !== 'all') {
+      filtered = filtered.filter(student => 
+        student.graduation?.passing_year === parseInt(studentPassingYearFilter)
+      );
+    }
+    
+    setFilteredStudents(filtered);
+  }, [studentSearch, studentVerificationFilter, studentCourseFilter, studentPassingYearFilter, students]);
+
+  // Apply applications filters
+  useEffect(() => {
+    let filtered = applications;
+    
+    // Filter by search term
+    if (applicationSearch) {
+      const term = applicationSearch.toLowerCase();
+      filtered = filtered.filter(app => 
+        app.student_profile?.first_name?.toLowerCase().includes(term) ||
+        app.student_profile?.last_name?.toLowerCase().includes(term) ||
+        app.job?.title?.toLowerCase().includes(term) ||
+        app.job?.company_name?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filter by status
+    if (applicationStatusFilter !== 'all') {
+      filtered = filtered.filter(app => app.status === applicationStatusFilter);
+    }
+    
+    // Filter by date
+    if (applicationDateFilter) {
+      const filterDate = new Date(applicationDateFilter);
+      // Set to start of day
+      filterDate.setHours(0, 0, 0, 0);
+      
+      filtered = filtered.filter(app => {
+        const appDate = new Date(app.created_at || '');
+        // Set to start of day for comparison
+        appDate.setHours(0, 0, 0, 0);
+        return appDate.getTime() === filterDate.getTime();
+      });
+    }
+    
+    setFilteredApplications(filtered);
+  }, [applicationSearch, applicationStatusFilter, applicationDateFilter, applications]);
+
+  // Apply jobs filters
+  useEffect(() => {
+    let filtered = jobs;
+    
+    // Filter by search term
+    if (jobSearch) {
+      const term = jobSearch.toLowerCase();
+      filtered = filtered.filter(job => 
+        job.title?.toLowerCase().includes(term) ||
+        job.company_name?.toLowerCase().includes(term) ||
+        job.location?.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filter by status
+    if (jobStatusFilter !== 'all') {
+      filtered = filtered.filter(job => job.status === jobStatusFilter);
+    }
+    
+    // Filter by deadline
+    if (jobDeadlineFilter) {
+      const filterDate = new Date(jobDeadlineFilter);
+      // Set to start of day
+      filterDate.setHours(0, 0, 0, 0);
+      
+      filtered = filtered.filter(job => {
+        const deadlineDate = new Date(job.application_deadline || '');
+        // Set to start of day for comparison
+        deadlineDate.setHours(0, 0, 0, 0);
+        return deadlineDate.getTime() === filterDate.getTime();
+      });
+    }
+    
+    setFilteredJobs(filtered);
+  }, [jobSearch, jobStatusFilter, jobDeadlineFilter, jobs]);
+
+  // CSV Export Functions
+  const getStudentsCSVData = () => {
+    return filteredStudents.map(student => ({
+      'Name': `${student.first_name} ${student.last_name}`,
+      'Phone': student.phone,
+      'Email': student.email,
+      'College': student.graduation?.college_name || 'N/A',
+      'Course': student.graduation?.course || 'N/A',
+      'Passing Year': student.graduation?.passing_year || 'N/A',
+      'Marks': student.graduation?.marks || 'N/A',
+      'Is CGPA': student.graduation?.is_cgpa ? 'Yes' : 'No',
+      'Verified': student.is_verified ? 'Yes' : 'No',
+      'Verification Status': student.verification_status,
+      'Flagged Sections': student.flagged_sections ? student.flagged_sections.join(', ') : 'None',
+      'Blocked': student.is_blocked ? 'Yes' : 'No'
+    }));
+  };
+
+  const getApplicationsCSVData = () => {
+    return filteredApplications.map(app => ({
+      'Student Name': `${app.student_profile?.first_name} ${app.student_profile?.last_name}`,
+      'Phone': app.student_profile?.phone || 'N/A',
+      'Job Title': app.job?.title || 'N/A',
+      'Company': app.job?.company_name || 'N/A',
+      'Location': app.job?.location || 'N/A',
+      'Package': app.job?.package || 'N/A',
+      'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
+      'Applied Date': app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A',
+      'Admin Notes': app.admin_notes || 'N/A',
+      'Offer Letter': app.offer_letter_url ? 'Available' : 'Not uploaded'
+    }));
+  };
+
+  const getJobsCSVData = () => {
+    return filteredJobs.map(job => ({
+      'Title': job.title,
+      'Company': job.company_name,
+      'Location': job.location,
+      'Package': job.package,
+      'Status': job.status,
+      'Applications': job.application_count,
+      'Deadline': job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : 'N/A',
+      'Created On': job.created_at ? new Date(job.created_at).toLocaleDateString() : 'N/A',
+      'Min 10th Marks': job.min_class_x_marks || 'N/A',
+      'Min 12th Marks': job.min_class_xii_marks || 'N/A',
+      'Min Graduation Marks': job.min_graduation_marks || 'N/A',
+      'Allow Backlog': job.allow_backlog ? 'Yes' : 'No'
+    }));
   };
 
   return (
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold">Placement Reports</h1>
+          <h1 className="text-2xl font-bold">Reports</h1>
           <p className="text-gray-600">Analytics and statistics of placement activities</p>
         </div>
 
@@ -266,207 +375,458 @@ const Reports = () => {
             <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
           </div>
         ) : (
-          <Tabs defaultValue="department">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="department" className="flex items-center">
-                <BarChartIcon size={16} className="mr-2" /> Department Wise
+          <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="students" className="flex items-center">
+                <Users size={16} className="mr-2" /> Students
               </TabsTrigger>
-              <TabsTrigger value="company" className="flex items-center">
-                <PieChartIcon size={16} className="mr-2" /> Company Wise
+              <TabsTrigger value="applications" className="flex items-center">
+                <FileSpreadsheet size={16} className="mr-2" /> Applications
+              </TabsTrigger>
+              <TabsTrigger value="jobs" className="flex items-center">
+                <Briefcase size={16} className="mr-2" /> Jobs
               </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="department" className="mt-6 space-y-6">
+            {/* Students Tab */}
+            <TabsContent value="students" className="mt-6 space-y-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-lg">Department-wise Placement</CardTitle>
-                  <Button variant="outline" size="sm" onClick={exportDepartmentData}>
+                  <CardTitle className="text-lg">Students Report</CardTitle>
+                  <CSVLink 
+                    data={getStudentsCSVData()} 
+                    filename={'students-report.csv'} 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
                     <Download size={16} className="mr-2" /> Export CSV
-                  </Button>
+                  </CSVLink>
                 </CardHeader>
                 <CardContent>
-                  {departmentData.length > 0 ? (
-                    <div className="h-96">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={departmentData}
-                          margin={{ top: 20, right: 30, left: 20, bottom: 70 }}
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <Input
+                          placeholder="Search students..."
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-3">
+                        <Select value={studentVerificationFilter} onValueChange={setStudentVerificationFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Verification Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="verified">Verified</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="flagged">Flagged</SelectItem>
+                            <SelectItem value="blocked">Blocked</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <Select value={studentCourseFilter} onValueChange={setStudentCourseFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Course" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Courses</SelectItem>
+                            {courses.map(course => (
+                              <SelectItem key={course} value={course}>{course}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        <Select 
+                          value={studentPassingYearFilter} 
+                          onValueChange={setStudentPassingYearFilter}
                         >
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="name" 
-                            angle={-45} 
-                            textAnchor="end" 
-                            height={70} 
-                            interval={0} 
-                          />
-                          <YAxis />
-                          <Tooltip content={<CustomTooltip />} />
-                          <Legend />
-                          <Bar dataKey="total" name="Total Students" fill="#93c5fd" />
-                          <Bar dataKey="placed" name="Placed" fill="#3b82f6" />
-                        </BarChart>
-                      </ResponsiveContainer>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Passing Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Years</SelectItem>
+                            {passingYears.map(year => (
+                              <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-60">
-                      <BarChart2 size={40} className="text-gray-300 mb-3" />
-                      <p className="text-gray-500">No department data available</p>
+                    
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Contact</TableHead>
+                            <TableHead>Course</TableHead>
+                            <TableHead>College</TableHead>
+                            <TableHead>Passing Year</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredStudents.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                                No students found
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredStudents.map((student) => (
+                              <TableRow key={student.id}>
+                                <TableCell>
+                                  <div className="font-medium">
+                                    {student.first_name} {student.last_name}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div>{student.phone}</div>
+                                  <div className="text-xs text-gray-500">{student.email}</div>
+                                </TableCell>
+                                <TableCell>
+                                  {student.graduation?.course || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {student.graduation?.college_name || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {student.graduation?.passing_year || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    {student.is_verified ? (
+                                      <Badge className="bg-green-100 text-green-800">Verified</Badge>
+                                    ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
+                                      <Badge className="bg-amber-100 text-amber-800">Flagged</Badge>
+                                    ) : (
+                                      <Badge className="bg-blue-100 text-blue-800">Pending</Badge>
+                                    )}
+                                    
+                                    {student.is_blocked && (
+                                      <Badge className="bg-red-100 text-red-800">Blocked</Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Department-wise Data Table</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {departmentData.length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placed</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placement %</th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {departmentData.map((dept, index) => (
-                              <tr key={index}>
-                                <td className="px-6 py-4 whitespace-nowrap">{dept.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{dept.total}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{dept.placed}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  {dept.total > 0 ? ((dept.placed / dept.total) * 100).toFixed(2) + '%' : '0%'}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-40">
-                        <FileSpreadsheet size={30} className="text-gray-300 mb-2" />
-                        <p className="text-gray-500">No data available</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Application Status Distribution</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {statusData.length > 0 ? (
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={statusData}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            >
-                              {statusData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-60">
-                        <PieChartIcon size={40} className="text-gray-300 mb-3" />
-                        <p className="text-gray-500">No status data available</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
             </TabsContent>
             
-            <TabsContent value="company" className="mt-6 space-y-6">
+            {/* Applications Tab */}
+            <TabsContent value="applications" className="mt-6 space-y-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-lg">Company-wise Placement</CardTitle>
-                  <Button variant="outline" size="sm" onClick={exportCompanyData}>
+                  <CardTitle className="text-lg">Applications Report</CardTitle>
+                  <CSVLink 
+                    data={getApplicationsCSVData()} 
+                    filename={'applications-report.csv'} 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
                     <Download size={16} className="mr-2" /> Export CSV
-                  </Button>
+                  </CSVLink>
                 </CardHeader>
                 <CardContent>
-                  {companyData.length > 0 ? (
-                    <div className="h-96">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={companyData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            outerRadius={120}
-                            fill="#8884d8"
-                            dataKey="value"
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {companyData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip content={<CustomTooltip />} />
-                          <Legend layout="vertical" verticalAlign="middle" align="right" />
-                        </PieChart>
-                      </ResponsiveContainer>
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <Input
+                          placeholder="Search applications..."
+                          value={applicationSearch}
+                          onChange={(e) => setApplicationSearch(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-3">
+                        <Select value={applicationStatusFilter} onValueChange={setApplicationStatusFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="applied">Applied</SelectItem>
+                            <SelectItem value="under_review">Under Review</SelectItem>
+                            <SelectItem value="shortlisted">Shortlisted</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                            <SelectItem value="selected">Selected</SelectItem>
+                            <SelectItem value="internship">Internship</SelectItem>
+                            <SelectItem value="ppo">PPO</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={`w-[180px] justify-start text-left font-normal ${
+                                !applicationDateFilter && "text-muted-foreground"
+                              }`}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {applicationDateFilter ? (
+                                format(applicationDateFilter, "PPP")
+                              ) : (
+                                <span>Application Date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={applicationDateFilter}
+                              onSelect={setApplicationDateFilter}
+                              initialFocus
+                            />
+                            {applicationDateFilter && (
+                              <div className="p-3 border-t">
+                                <Button 
+                                  variant="ghost" 
+                                  onClick={() => setApplicationDateFilter(undefined)}
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  Clear Date
+                                </Button>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-60">
-                      <PieChartIcon size={40} className="text-gray-300 mb-3" />
-                      <p className="text-gray-500">No company data available</p>
+                    
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Student</TableHead>
+                            <TableHead>Job</TableHead>
+                            <TableHead>Company</TableHead>
+                            <TableHead>Applied On</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Offer Letter</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredApplications.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                                No applications found
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredApplications.map((application) => (
+                              <TableRow key={application.id}>
+                                <TableCell>
+                                  <div className="font-medium">
+                                    {application.student_profile?.first_name} {application.student_profile?.last_name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {application.student_profile?.phone}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{application.job?.title || 'N/A'}</TableCell>
+                                <TableCell>{application.job?.company_name || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {application.created_at 
+                                    ? new Date(application.created_at).toLocaleDateString() 
+                                    : 'N/A'
+                                  }
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <Badge 
+                                      className={
+                                        application.status === 'selected' ? 'bg-green-100 text-green-800' :
+                                        application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                        application.status === 'applied' ? 'bg-blue-100 text-blue-800' :
+                                        application.status === 'under_review' ? 'bg-yellow-100 text-yellow-800' :
+                                        application.status === 'shortlisted' ? 'bg-purple-100 text-purple-800' :
+                                        application.status === 'internship' ? 'bg-indigo-100 text-indigo-800' :
+                                        application.status === 'ppo' ? 'bg-pink-100 text-pink-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }
+                                    >
+                                      {application.status === 'ppo' 
+                                        ? 'PPO' 
+                                        : application.status.replace('_', ' ')
+                                      }
+                                    </Badge>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {application.offer_letter_url ? (
+                                    <a 
+                                      href={application.offer_letter_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:underline text-sm"
+                                    >
+                                      View
+                                    </a>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">None</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
-
+            </TabsContent>
+            
+            {/* Jobs Tab */}
+            <TabsContent value="jobs" className="mt-6 space-y-6">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Company-wise Data Table</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg">Jobs Report</CardTitle>
+                  <CSVLink 
+                    data={getJobsCSVData()} 
+                    filename={'jobs-report.csv'} 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    <Download size={16} className="mr-2" /> Export CSV
+                  </CSVLink>
                 </CardHeader>
                 <CardContent>
-                  {companyData.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Placements</th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {companyData.map((company, index) => (
-                            <tr key={index}>
-                              <td className="px-6 py-4 whitespace-nowrap">{company.name}</td>
-                              <td className="px-6 py-4 whitespace-nowrap">{company.value}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <Input
+                          placeholder="Search jobs..."
+                          value={jobSearch}
+                          onChange={(e) => setJobSearch(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-3">
+                        <Select value={jobStatusFilter} onValueChange={setJobStatusFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="closed">Closed</SelectItem>
+                            <SelectItem value="draft">Draft</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className={`w-[180px] justify-start text-left font-normal ${
+                                !jobDeadlineFilter && "text-muted-foreground"
+                              }`}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {jobDeadlineFilter ? (
+                                format(jobDeadlineFilter, "PPP")
+                              ) : (
+                                <span>Deadline</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={jobDeadlineFilter}
+                              onSelect={setJobDeadlineFilter}
+                              initialFocus
+                            />
+                            {jobDeadlineFilter && (
+                              <div className="p-3 border-t">
+                                <Button 
+                                  variant="ghost" 
+                                  onClick={() => setJobDeadlineFilter(undefined)}
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  Clear Date
+                                </Button>
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40">
-                      <FileSpreadsheet size={30} className="text-gray-300 mb-2" />
-                      <p className="text-gray-500">No data available</p>
+                    
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Job</TableHead>
+                            <TableHead>Company</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Package</TableHead>
+                            <TableHead>Applications</TableHead>
+                            <TableHead>Deadline</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredJobs.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                                No jobs found
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredJobs.map((job) => (
+                              <TableRow key={job.id}>
+                                <TableCell>
+                                  <div className="font-medium">{job.title}</div>
+                                </TableCell>
+                                <TableCell>{job.company_name}</TableCell>
+                                <TableCell>{job.location}</TableCell>
+                                <TableCell>{job.package}</TableCell>
+                                <TableCell>
+                                  <Badge className="bg-blue-100 text-blue-800">
+                                    {job.application_count}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {job.application_deadline 
+                                    ? new Date(job.application_deadline).toLocaleDateString() 
+                                    : 'N/A'
+                                  }
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    className={
+                                      job.status === 'active' ? 'bg-green-100 text-green-800' :
+                                      job.status === 'closed' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }
+                                  >
+                                    {job.status}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
