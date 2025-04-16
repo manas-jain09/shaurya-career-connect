@@ -616,6 +616,7 @@ const Reports = () => {
                     </Button>
                   </div>
                   
+                  {/* Student table */}
                   <div className="overflow-x-auto rounded-lg border">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
@@ -725,7 +726,7 @@ const Reports = () => {
                         <SelectContent>
                           <SelectItem value="all">All Companies</SelectItem>
                           {companyOptions.map(company => (
-                            <SelectItem key={company} value={company}>{company}</SelectItem>
+                            <SelectItem key={company} value={company || "unknown"}>{company || "Unknown"}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -763,7 +764,7 @@ const Reports = () => {
                         <SelectContent>
                           <SelectItem value="all">All Courses</SelectItem>
                           {courseOptions.map(course => (
-                            <SelectItem key={course} value={course}>{course}</SelectItem>
+                            <SelectItem key={course} value={course || "unknown"}>{course || "Unknown"}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -778,7 +779,7 @@ const Reports = () => {
                         <SelectContent>
                           <SelectItem value="all">All Divisions</SelectItem>
                           {divisionOptions.map(division => (
-                            <SelectItem key={division} value={division}>{division}</SelectItem>
+                            <SelectItem key={division} value={division || "unknown"}>{division || "Unknown"}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -808,7 +809,7 @@ const Reports = () => {
                         <SelectContent>
                           <SelectItem value="all">All Departments</SelectItem>
                           {departmentOptions.map(dept => (
-                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                            <SelectItem key={dept} value={dept || "unknown"}>{dept || "Unknown"}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -821,6 +822,7 @@ const Reports = () => {
                     </div>
                   </div>
                   
+                  {/* Applications table */}
                   <div className="overflow-x-auto rounded-lg border">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
@@ -939,7 +941,7 @@ const Reports = () => {
                         <SelectContent>
                           <SelectItem value="all">All Companies</SelectItem>
                           {companyOptions.map(company => (
-                            <SelectItem key={company} value={company}>{company}</SelectItem>
+                            <SelectItem key={company} value={company || "unknown"}>{company || "Unknown"}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -954,7 +956,7 @@ const Reports = () => {
                         <SelectContent>
                           <SelectItem value="all">All Locations</SelectItem>
                           {locationOptions.map(location => (
-                            <SelectItem key={location} value={location}>{location}</SelectItem>
+                            <SelectItem key={location} value={location || "unknown"}>{location || "Unknown"}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -964,6 +966,7 @@ const Reports = () => {
                     </Button>
                   </div>
                   
+                  {/* Jobs table */}
                   <div className="overflow-x-auto rounded-lg border">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
