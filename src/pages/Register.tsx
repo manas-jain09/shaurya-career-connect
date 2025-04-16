@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -26,6 +27,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { GraduationDetails } from '@/types/database.types';
 import { uploadFile } from '@/utils/helpers';
+import { FileText } from 'lucide-react';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -69,6 +71,31 @@ const Register = () => {
   const [gradMarksheetFile, setGradMarksheetFile] = useState<File | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [activeStep, setActiveStep] = useState(0);
+  
+  // New state variables
+  const [placementInterest, setPlacementInterest] = useState('placement/internship');
+  const [agreedToPolicies, setAgreedToPolicies] = useState(false);
+  const [policyUrl, setPolicyUrl] = useState<string | null>(null);
+
+  // Fetch placement policy URL on component mount
+  useEffect(() => {
+    const fetchPolicyUrl = async () => {
+      try {
+        const { data } = await supabase
+          .storage
+          .from('documents')
+          .getPublicUrl('placement_policy.pdf');
+        
+        if (data) {
+          setPolicyUrl(data.publicUrl);
+        }
+      } catch (error) {
+        console.error('Error fetching policy URL:', error);
+      }
+    };
+    
+    fetchPolicyUrl();
+  }, []);
 
   const courseOptions = [
     "Mechanical Engineering",
@@ -122,13 +149,18 @@ const Register = () => {
   };
 
   const validatePersonalInfo = () => {
-    if (!name || !email || !phone || !dob || !gender || !password) {
+    if (!name || !email || !phone || !dob || !gender || !password || !placementInterest) {
       toast('Please fill all required fields');
       return false;
     }
     
     if (password !== confirmPassword) {
       toast('Passwords do not match');
+      return false;
+    }
+    
+    if (!agreedToPolicies) {
+      toast('You must agree to the placement policies');
       return false;
     }
     
@@ -208,7 +240,9 @@ const Register = () => {
           phone,
           address,
           is_verified: false,
-          verification_status: 'pending'
+          verification_status: 'pending',
+          placement_interest: placementInterest,
+          agreed_to_policies: agreedToPolicies
         })
         .select('id')
         .single();
@@ -433,6 +467,21 @@ const Register = () => {
                 </div>
                 
                 <div>
+                  <Label htmlFor="placementInterest">Interested In*</Label>
+                  <Select value={placementInterest} onValueChange={setPlacementInterest}>
+                    <SelectTrigger id="placementInterest">
+                      <SelectValue placeholder="Select Option" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="placement/internship">Interested in Placement/Internship</SelectItem>
+                      <SelectItem value="higher_studies">Interested in Higher Studies</SelectItem>
+                      <SelectItem value="family_business">Interested in Family Business</SelectItem>
+                      <SelectItem value="entrepreneurship">Interested in Entrepreneurship</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
                   <Label htmlFor="password">Password*</Label>
                   <Input
                     id="password"
@@ -452,6 +501,31 @@ const Register = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm your password"
                   />
+                </div>
+              </div>
+              
+              <div className="mt-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="policiesAgreement" 
+                    checked={agreedToPolicies}
+                    onCheckedChange={(checked) => setAgreedToPolicies(checked === true)}
+                  />
+                  <div className="flex items-center space-x-1">
+                    <Label htmlFor="policiesAgreement" className="text-sm">
+                      I agree to the placement policies of the institution
+                    </Label>
+                    {policyUrl && (
+                      <a 
+                        href={policyUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-blue-600 hover:underline inline-flex items-center"
+                      >
+                        <FileText size={16} className="ml-1" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -769,6 +843,15 @@ const Register = () => {
                 <p className="text-sm text-yellow-700 mt-1">
                   All submitted documents will be verified by the admin. Your profile and 
                   job application eligibility depends on successful verification.
+                  {placementInterest !== 'placement/internship' && (
+                    <span className="block mt-2 text-yellow-800 font-medium">
+                      Note: You have indicated interest in {
+                        placementInterest === 'higher_studies' ? 'higher studies' :
+                        placementInterest === 'family_business' ? 'family business' :
+                        'entrepreneurship'
+                      }. You will be marked as opted out of placements.
+                    </span>
+                  )}
                 </p>
               </div>
             </div>

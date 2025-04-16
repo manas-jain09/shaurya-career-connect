@@ -18,11 +18,12 @@ interface JobApplicationData {
     rejected: number;
     selected: number;
   };
+  canApply: boolean;
 }
 
 export const useJobApplications = (): JobApplicationData => {
   const { user } = useAuth();
-  const { profile } = useStudentProfile();
+  const { profile, isEligibleForJobs } = useStudentProfile();
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +35,7 @@ export const useJobApplications = (): JobApplicationData => {
     rejected: 0,
     selected: 0
   });
+  const [canApply, setCanApply] = useState(false);
 
   const fetchApplications = async () => {
     if (!profile) {
@@ -45,6 +47,9 @@ export const useJobApplications = (): JobApplicationData => {
     setError(null);
 
     try {
+      // Set canApply based on profile eligibility
+      setCanApply(isEligibleForJobs);
+      
       // Fetch applications with job details
       const { data, error: fetchError } = await supabase
         .from('job_applications')
@@ -101,13 +106,14 @@ export const useJobApplications = (): JobApplicationData => {
     if (profile) {
       fetchApplications();
     }
-  }, [profile]);
+  }, [profile, isEligibleForJobs]);
 
   return {
     applications,
     isLoading,
     error,
     refreshData: fetchApplications,
-    counts
+    counts,
+    canApply
   };
 };

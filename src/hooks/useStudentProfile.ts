@@ -13,6 +13,7 @@ interface StudentProfileData {
   isLoading: boolean;
   error: string | null;
   refreshData: () => Promise<void>;
+  isEligibleForJobs: boolean;
 }
 
 export const useStudentProfile = (profileId?: string): StudentProfileData => {
@@ -24,6 +25,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [resume, setResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
 
   // Use the provided profileId or get it from the user
   const studentProfileId = profileId || user?.profileId;
@@ -47,6 +49,12 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
 
       if (profileError) throw profileError;
       setProfile(profileData);
+
+      // Determine job eligibility based on verification status and placement interest
+      const isVerified = profileData.is_verified;
+      const placementInterest = profileData.placement_interest || 'placement/internship';
+      const isEligible = isVerified && placementInterest === 'placement/internship';
+      setIsEligibleForJobs(isEligible);
 
       // Fetch Class X details
       const { data: classXData, error: classXError } = await supabase
@@ -108,6 +116,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
     resume,
     isLoading,
     error,
-    refreshData: fetchProfileData
+    refreshData: fetchProfileData,
+    isEligibleForJobs
   };
 };

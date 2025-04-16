@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
@@ -9,14 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { EditIcon, CheckCircle2, XCircle, Upload } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { EditIcon, CheckCircle2, XCircle, Upload, AlertTriangle, GraduationCap, Briefcase, Building2, Rocket } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile } from '@/utils/helpers';
 import { toast } from 'sonner';
 
 const ProfilePage = () => {
   const { user } = useAuth();
-  const { profile, classX, classXII, graduation, resume, isLoading, refreshData } = useStudentProfile();
+  const { profile, classX, classXII, graduation, resume, isLoading, refreshData, isEligibleForJobs } = useStudentProfile();
   const [editing, setEditing] = useState<string | null>(null);
   const [uploading, setUploading] = useState<boolean>(false);
 
@@ -28,10 +29,55 @@ const ProfilePage = () => {
     address: '',
   });
 
+  // Get placement interest icon
+  const getPlacementInterestIcon = () => {
+    if (!profile?.placement_interest) return <Briefcase />;
+    
+    switch (profile.placement_interest) {
+      case 'higher_studies':
+        return <GraduationCap className="text-purple-500" />;
+      case 'family_business':
+        return <Building2 className="text-orange-500" />;
+      case 'entrepreneurship':
+        return <Rocket className="text-red-500" />;
+      default:
+        return <Briefcase className="text-blue-500" />;
+    }
+  };
+
+  // Get placement interest text
+  const getPlacementInterestText = () => {
+    if (!profile?.placement_interest) return 'Interested in Placement/Internship';
+    
+    switch (profile.placement_interest) {
+      case 'higher_studies':
+        return 'Interested in Higher Studies';
+      case 'family_business':
+        return 'Interested in Family Business';
+      case 'entrepreneurship':
+        return 'Interested in Entrepreneurship';
+      default:
+        return 'Interested in Placement/Internship';
+    }
+  };
+
+  // Function to check if section is editable
+  const isSectionEditable = (section: string) => {
+    if (!profile) return false;
+    if (section === 'personal') return true; // Personal info always editable
+    return !profile.is_verified; // Other sections only editable if not verified
+  };
+
   // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
+
+    // Check if section is editable
+    if (type !== 'resume' && !isSectionEditable(type)) {
+      toast.error('You cannot modify this section after verification');
+      return;
+    }
 
     setUploading(true);
     try {
@@ -189,6 +235,36 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
         
+        {/* Placement Status */}
+        {profile && profile.is_verified && (
+          <Card className={isEligibleForJobs ? "bg-blue-50" : "bg-orange-50"}>
+            <CardContent className="p-4">
+              <div className="flex items-center">
+                {isEligibleForJobs ? (
+                  <>
+                    <Briefcase className="text-blue-500 mr-2" size={20} />
+                    <div>
+                      <p className="font-medium text-blue-700">Eligible for Placements</p>
+                      <p className="text-sm text-blue-600">You can apply for job postings</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="text-orange-500 mr-2" size={20} />
+                    <div>
+                      <p className="font-medium text-orange-700">Opted Out of Placements</p>
+                      <p className="text-sm text-orange-600">
+                        You have indicated interest in {profile.placement_interest === 'higher_studies' ? 'higher studies' : 
+                        profile.placement_interest === 'family_business' ? 'family business' : 'entrepreneurship'}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* Personal Information */}
         <Card>
           <CardHeader className="pb-2">
@@ -265,6 +341,17 @@ const ProfilePage = () => {
                   <p className="text-sm font-medium text-gray-500">Gender</p>
                   <p>{profile?.gender}</p>
                 </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Career Interest</p>
+                  <div className="flex items-center mt-1">
+                    {getPlacementInterestIcon()}
+                    <span className="ml-2">{getPlacementInterestText()}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Placement Policies</p>
+                  <p>{profile?.agreed_to_policies ? 'Agreed to policies' : 'Not agreed to policies'}</p>
+                </div>
                 <div className="md:col-span-2">
                   <p className="text-sm font-medium text-gray-500">Address</p>
                   <p>{profile?.address || '-'}</p>
@@ -277,7 +364,21 @@ const ProfilePage = () => {
         {/* Education - Class X */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Class X Details</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg font-semibold">Class X Details</CardTitle>
+              {!profile?.is_verified && classX && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    // Edit Class X details logic would go here
+                    toast.info('Edit functionality for education details will be implemented in a future update');
+                  }}
+                >
+                  <EditIcon size={16} className="mr-1" /> Edit
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="pt-4">
             {classX ? (
@@ -315,21 +416,25 @@ const ProfilePage = () => {
                       >
                         View Uploaded Marksheet
                       </a>
-                      <span className="text-gray-400">|</span>
-                      <label className="cursor-pointer text-gray-500 hover:text-shaurya-primary">
-                        <span>Replace</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload(e, 'class_x')}
-                          disabled={uploading}
-                        />
-                      </label>
+                      {isSectionEditable('class_x') && (
+                        <>
+                          <span className="text-gray-400">|</span>
+                          <label className="cursor-pointer text-gray-500 hover:text-shaurya-primary">
+                            <span>Replace</span>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              onChange={(e) => handleFileUpload(e, 'class_x')}
+                              disabled={uploading}
+                            />
+                          </label>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div>
-                      <label className="flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary">
+                      <label className={`flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary ${!isSectionEditable('class_x') ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Upload size={16} />
                         <span>Upload Marksheet</span>
                         <input
@@ -337,9 +442,14 @@ const ProfilePage = () => {
                           accept=".pdf,.jpg,.jpeg,.png"
                           className="hidden"
                           onChange={(e) => handleFileUpload(e, 'class_x')}
-                          disabled={uploading}
+                          disabled={uploading || !isSectionEditable('class_x')}
                         />
                       </label>
+                      {!isSectionEditable('class_x') && (
+                        <p className="text-xs text-orange-500 mt-1">
+                          You cannot modify this section after verification
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -353,7 +463,21 @@ const ProfilePage = () => {
         {/* Education - Class XII */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Class XII Details</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg font-semibold">Class XII Details</CardTitle>
+              {!profile?.is_verified && classXII && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    // Edit Class XII details logic would go here
+                    toast.info('Edit functionality for education details will be implemented in a future update');
+                  }}
+                >
+                  <EditIcon size={16} className="mr-1" /> Edit
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="pt-4">
             {classXII ? (
@@ -391,21 +515,25 @@ const ProfilePage = () => {
                       >
                         View Uploaded Marksheet
                       </a>
-                      <span className="text-gray-400">|</span>
-                      <label className="cursor-pointer text-gray-500 hover:text-shaurya-primary">
-                        <span>Replace</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload(e, 'class_xii')}
-                          disabled={uploading}
-                        />
-                      </label>
+                      {isSectionEditable('class_xii') && (
+                        <>
+                          <span className="text-gray-400">|</span>
+                          <label className="cursor-pointer text-gray-500 hover:text-shaurya-primary">
+                            <span>Replace</span>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              onChange={(e) => handleFileUpload(e, 'class_xii')}
+                              disabled={uploading}
+                            />
+                          </label>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div>
-                      <label className="flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary">
+                      <label className={`flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary ${!isSectionEditable('class_xii') ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Upload size={16} />
                         <span>Upload Marksheet</span>
                         <input
@@ -413,9 +541,14 @@ const ProfilePage = () => {
                           accept=".pdf,.jpg,.jpeg,.png"
                           className="hidden"
                           onChange={(e) => handleFileUpload(e, 'class_xii')}
-                          disabled={uploading}
+                          disabled={uploading || !isSectionEditable('class_xii')}
                         />
                       </label>
+                      {!isSectionEditable('class_xii') && (
+                        <p className="text-xs text-orange-500 mt-1">
+                          You cannot modify this section after verification
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -429,7 +562,21 @@ const ProfilePage = () => {
         {/* Education - Graduation */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Graduation Details</CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-lg font-semibold">Graduation Details</CardTitle>
+              {!profile?.is_verified && graduation && (
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => {
+                    // Edit Graduation details logic would go here
+                    toast.info('Edit functionality for education details will be implemented in a future update');
+                  }}
+                >
+                  <EditIcon size={16} className="mr-1" /> Edit
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="pt-4">
             {graduation ? (
@@ -479,21 +626,25 @@ const ProfilePage = () => {
                       >
                         View Uploaded Marksheet
                       </a>
-                      <span className="text-gray-400">|</span>
-                      <label className="cursor-pointer text-gray-500 hover:text-shaurya-primary">
-                        <span>Replace</span>
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          className="hidden"
-                          onChange={(e) => handleFileUpload(e, 'graduation')}
-                          disabled={uploading}
-                        />
-                      </label>
+                      {isSectionEditable('graduation') && (
+                        <>
+                          <span className="text-gray-400">|</span>
+                          <label className="cursor-pointer text-gray-500 hover:text-shaurya-primary">
+                            <span>Replace</span>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              onChange={(e) => handleFileUpload(e, 'graduation')}
+                              disabled={uploading}
+                            />
+                          </label>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div>
-                      <label className="flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary">
+                      <label className={`flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary ${!isSectionEditable('graduation') ? 'opacity-50 pointer-events-none' : ''}`}>
                         <Upload size={16} />
                         <span>Upload Marksheet</span>
                         <input
@@ -501,9 +652,14 @@ const ProfilePage = () => {
                           accept=".pdf,.jpg,.jpeg,.png"
                           className="hidden"
                           onChange={(e) => handleFileUpload(e, 'graduation')}
-                          disabled={uploading}
+                          disabled={uploading || !isSectionEditable('graduation')}
                         />
                       </label>
+                      {!isSectionEditable('graduation') && (
+                        <p className="text-xs text-orange-500 mt-1">
+                          You cannot modify this section after verification
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -511,17 +667,27 @@ const ProfilePage = () => {
             ) : (
               <div>
                 <p className="text-gray-500 italic mb-4">No Graduation details available. Please upload your marksheet to add your details.</p>
-                <label className="flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary">
-                  <Upload size={16} />
-                  <span>Upload Marksheet</span>
-                  <input
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    className="hidden"
-                    onChange={(e) => handleFileUpload(e, 'graduation')}
-                    disabled={uploading}
-                  />
-                </label>
+                {isSectionEditable('graduation') ? (
+                  <label className="flex items-center gap-2 cursor-pointer inline-block px-4 py-2 border border-dashed border-gray-300 rounded-md hover:border-shaurya-primary">
+                    <Upload size={16} />
+                    <span>Upload Marksheet</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => handleFileUpload(e, 'graduation')}
+                      disabled={uploading}
+                    />
+                  </label>
+                ) : (
+                  <Alert variant="warning">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Access Restricted</AlertTitle>
+                    <AlertDescription>
+                      You cannot add graduation details after your profile has been verified.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             )}
           </CardContent>
