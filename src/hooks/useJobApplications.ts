@@ -17,9 +17,7 @@ interface JobApplicationData {
     shortlisted: number;
     rejected: number;
     selected: number;
-    internshipPlusPpo: number;
   };
-  hasSelectedApplication: boolean;
 }
 
 export const useJobApplications = (): JobApplicationData => {
@@ -28,15 +26,13 @@ export const useJobApplications = (): JobApplicationData => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasSelectedApplication, setHasSelectedApplication] = useState<boolean>(false);
   const [counts, setCounts] = useState({
     total: 0,
     applied: 0,
     underReview: 0,
     shortlisted: 0,
     rejected: 0,
-    selected: 0,
-    internshipPlusPpo: 0
+    selected: 0
   });
 
   const fetchApplications = async () => {
@@ -75,12 +71,6 @@ export const useJobApplications = (): JobApplicationData => {
       
       setApplications(typedApplications);
       
-      // Check if student has a selected or internship+ppo application
-      const hasSelected = typedApplications.some(app => 
-        app.status === 'selected' || app.status === 'internship_plus_ppo'
-      );
-      setHasSelectedApplication(hasSelected);
-      
       // Calculate counts
       if (typedApplications.length > 0) {
         const total = typedApplications.length;
@@ -89,7 +79,6 @@ export const useJobApplications = (): JobApplicationData => {
         const shortlisted = typedApplications.filter(app => app.status === 'shortlisted').length;
         const rejected = typedApplications.filter(app => app.status === 'rejected').length;
         const selected = typedApplications.filter(app => app.status === 'selected').length;
-        const internshipPlusPpo = typedApplications.filter(app => app.status === 'internship_plus_ppo').length;
         
         setCounts({
           total,
@@ -97,8 +86,7 @@ export const useJobApplications = (): JobApplicationData => {
           underReview,
           shortlisted,
           rejected,
-          selected,
-          internshipPlusPpo
+          selected
         });
       }
     } catch (err) {
@@ -120,7 +108,6 @@ export const useJobApplications = (): JobApplicationData => {
     isLoading,
     error,
     refreshData: fetchApplications,
-    counts,
-    hasSelectedApplication
+    counts
   };
 };

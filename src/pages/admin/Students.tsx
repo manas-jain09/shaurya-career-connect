@@ -14,15 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { 
   Search, 
   Filter, 
   CheckCircle, 
@@ -30,10 +21,7 @@ import {
   Clock,
   Eye,
   User,
-  Download,
-  AlertTriangle,
-  ShieldAlert,
-  ShieldCheck
+  Download
 } from 'lucide-react';
 import { StudentProfile } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,9 +32,6 @@ const Students = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVerified, setFilterVerified] = useState('all');
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -66,8 +51,6 @@ const Students = () => {
         query = query.eq('is_verified', true);
       } else if (filterVerified === 'unverified') {
         query = query.eq('is_verified', false);
-      } else if (filterVerified === 'blocked') {
-        query = query.eq('is_blocked', true);
       }
 
       const { data, error } = await query;
@@ -86,49 +69,6 @@ const Students = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const toggleBlockStatus = async (student: StudentProfile) => {
-    setIsProcessing(true);
-    try {
-      const newBlockedStatus = !student.is_blocked;
-      
-      const { error } = await supabase
-        .from('student_profiles')
-        .update({ is_blocked: newBlockedStatus })
-        .eq('id', student.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Success',
-        description: `Student ${newBlockedStatus ? 'blocked' : 'unblocked'} successfully`,
-        variant: 'default',
-      });
-      
-      // Create notification
-      await supabase.from('notifications').insert({
-        user_id: student.user_id,
-        title: newBlockedStatus ? 'Account Blocked' : 'Account Unblocked',
-        message: newBlockedStatus 
-          ? 'Your account has been blocked by the admin. Please contact the placement office.'
-          : 'Your account has been unblocked. You can now use all features.',
-        is_read: false,
-      });
-      
-      // Refresh student list
-      fetchStudents();
-      setConfirmDialogOpen(false);
-    } catch (error) {
-      console.error('Error toggling block status:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update student status',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsProcessing(false);
     }
   };
 
@@ -154,30 +94,6 @@ const Students = () => {
     }
   };
 
-  const getPlacementStatusBadge = (student: StudentProfile) => {
-    if (student.is_blocked) {
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-        <ShieldAlert size={14} className="mr-1" /> Blocked
-      </Badge>;
-    }
-    
-    if (student.placement_interest && student.placement_interest !== 'placement/internship') {
-      return <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-        <AlertTriangle size={14} className="mr-1" /> Opted Out
-      </Badge>;
-    }
-    
-    if (student.is_verified && student.agreed_to_policies) {
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-        <ShieldCheck size={14} className="mr-1" /> Eligible
-      </Badge>;
-    }
-    
-    return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
-      Incomplete
-    </Badge>;
-  };
-
   const exportToCSV = () => {
     if (filteredStudents.length === 0) {
       toast({
@@ -189,18 +105,15 @@ const Students = () => {
     }
     
     // CSV Headers
-    let csvContent = "Name,Gender,Phone,Address,Verification Status,Placement Interest,Profile Status,Registration Date\n";
+    let csvContent = "Name,Gender,Phone,Address,Verification Status,Registration Date\n";
     
     // Add rows
     filteredStudents.forEach(student => {
       const name = `${student.first_name} ${student.last_name}`;
       const status = student.is_verified ? "Verified" : student.verification_status;
       const date = student.created_at ? new Date(student.created_at).toLocaleDateString() : "N/A";
-      const placementStatus = student.is_blocked 
-        ? "Blocked" 
-        : (student.placement_interest !== 'placement/internship' ? "Opted Out" : "Eligible");
       
-      csvContent += `"${name}","${student.gender}","${student.phone}","${student.address || ""}","${status}","${student.placement_interest || ''}","${placementStatus}","${date}"\n`;
+      csvContent += `"${name}","${student.gender}","${student.phone}","${student.address || ""}","${status}","${date}"\n`;
     });
     
     // Create and download the file
@@ -212,11 +125,6 @@ const Students = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const handleOpenBlockDialog = (student: StudentProfile) => {
-    setSelectedStudent(student);
-    setConfirmDialogOpen(true);
   };
 
   return (
@@ -254,7 +162,6 @@ const Students = () => {
               <option value="all">All Students</option>
               <option value="verified">Verified Only</option>
               <option value="unverified">Unverified Only</option>
-              <option value="blocked">Blocked Students</option>
             </select>
           </div>
         </div>
@@ -275,16 +182,12 @@ const Students = () => {
                       <TableHead>Phone</TableHead>
                       <TableHead>Address</TableHead>
                       <TableHead>Verification</TableHead>
-                      <TableHead>Placement Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredStudents.map((student) => (
-                      <TableRow 
-                        key={student.id}
-                        className={student.is_blocked ? "bg-red-50" : ""}
-                      >
+                      <TableRow key={student.id}>
                         <TableCell className="font-medium">
                           {student.first_name} {student.last_name}
                         </TableCell>
@@ -292,32 +195,14 @@ const Students = () => {
                         <TableCell>{student.phone}</TableCell>
                         <TableCell>{student.address || 'Not provided'}</TableCell>
                         <TableCell>{getVerificationBadge(student.is_verified, student.verification_status)}</TableCell>
-                        <TableCell>{getPlacementStatusBadge(student)}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/admin/verification/${student.id}`)}
-                            >
-                              <Eye size={16} className="mr-1" /> View Profile
-                            </Button>
-                            <Button
-                              variant={student.is_blocked ? "outline" : "destructive"}
-                              size="sm"
-                              onClick={() => handleOpenBlockDialog(student)}
-                            >
-                              {student.is_blocked ? (
-                                <>
-                                  <ShieldCheck size={16} className="mr-1" /> Unblock
-                                </>
-                              ) : (
-                                <>
-                                  <ShieldAlert size={16} className="mr-1" /> Block
-                                </>
-                              )}
-                            </Button>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/verification/${student.id}`)}
+                          >
+                            <Eye size={16} className="mr-1" /> View Profile
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -333,48 +218,6 @@ const Students = () => {
           </>
         )}
       </div>
-
-      <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {selectedStudent?.is_blocked ? 'Unblock Student' : 'Block Student'}
-            </DialogTitle>
-            <DialogDescription>
-              {selectedStudent?.is_blocked 
-                ? 'This will allow the student to apply for jobs and access all features.'
-                : 'This will prevent the student from applying for jobs or proceeding with existing applications.'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedStudent && (
-            <div className="py-4">
-              <p className="mb-2"><strong>Student:</strong> {selectedStudent.first_name} {selectedStudent.last_name}</p>
-              <p><strong>Phone:</strong> {selectedStudent.phone}</p>
-            </div>
-          )}
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant={selectedStudent?.is_blocked ? "default" : "destructive"}
-              onClick={() => selectedStudent && toggleBlockStatus(selectedStudent)}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <div className="flex items-center">
-                  <div className="animate-spin mr-2 h-4 w-4 border-2 border-t-transparent rounded-full"></div>
-                  Processing...
-                </div>
-              ) : (
-                selectedStudent?.is_blocked ? 'Unblock Student' : 'Block Student'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </AdminLayout>
   );
 };
