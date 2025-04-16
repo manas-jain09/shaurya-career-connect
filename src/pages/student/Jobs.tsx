@@ -4,7 +4,7 @@ import StudentLayout from '@/components/layouts/StudentLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, Lock } from 'lucide-react';
 import JobCard from '@/components/student/JobCard';
 import { JobPosting } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,10 +27,14 @@ const Jobs = () => {
   const [jobEligibility, setJobEligibility] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
-    fetchJobs();
-  }, []);
+    if (profile) {
+      fetchJobs();
+    }
+  }, [profile]);
 
   const fetchJobs = async () => {
+    if (!profile) return;
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -46,16 +50,15 @@ const Jobs = () => {
       setFilteredJobs(jobsData);
       
       // Check eligibility for each job
-      if (profile) {
-        const eligibilityMap: {[key: string]: boolean} = {};
-        
-        for (const job of jobsData) {
-          const { isEligible } = await checkJobEligibility(profile.id as string, job);
-          eligibilityMap[job.id as string] = isEligible;
-        }
-        
-        setJobEligibility(eligibilityMap);
+      const eligibilityMap: {[key: string]: boolean} = {};
+      
+      for (const job of jobsData) {
+        const { isEligible } = await checkJobEligibility(profile.id as string, job);
+        console.log(`Job ${job.title} eligibility:`, isEligible);
+        eligibilityMap[job.id as string] = isEligible;
       }
+      
+      setJobEligibility(eligibilityMap);
     } catch (err) {
       console.error('Error fetching jobs:', err);
     } finally {
@@ -94,6 +97,7 @@ const Jobs = () => {
   const isProfileNotVerified = profile ? !profile.is_verified : true;
   const hasNoPlacementInterest = profile ? profile.placement_interest !== 'placement/internship' : true;
   const hasFlaggedSections = profile?.flagged_sections && profile.flagged_sections.length > 0;
+  const isBlocked = profile?.is_blocked || false;
 
   if (isProfileNotVerified || hasNoPlacementInterest) {
     return (
@@ -133,6 +137,20 @@ const Jobs = () => {
           <p className="text-gray-600">Explore and apply for available job opportunities</p>
         </div>
         
+        {isBlocked && (
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="p-4 flex items-center space-x-3">
+              <Lock className="h-5 w-5 text-red-600" />
+              <div>
+                <h3 className="font-semibold text-red-700">Your account is blocked</h3>
+                <p className="text-sm text-red-600">
+                  Your account has been blocked by the administrator. You cannot apply for jobs until this restriction is lifted.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
@@ -167,9 +185,9 @@ const Jobs = () => {
                 job={job}
                 isApplied={isJobApplied(job.id)}
                 isProfileVerified={!isProfileNotVerified}
-                isFlaggedProfile={hasFlaggedSections}
+                isFlaggedProfile={hasFlaggedSections || isBlocked}
                 onApply={handleApplySuccess}
-                isEligible={jobEligibility[job.id as string] || false}
+                isEligible={!isBlocked && (jobEligibility[job.id as string] || false)}
               />
             ))}
           </div>

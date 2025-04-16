@@ -4,8 +4,9 @@ import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useJobApplications } from '@/hooks/useJobApplications';
+import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
-import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users } from 'lucide-react';
+import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock } from 'lucide-react';
 
 const statusDisplayConfig = {
   applied: {
@@ -37,6 +38,8 @@ const statusDisplayConfig = {
 
 const Applications = () => {
   const { applications, isLoading, error, counts } = useJobApplications();
+  const { profile } = useStudentProfile();
+  const isBlocked = profile?.is_blocked || false;
 
   if (isLoading) {
     return (
@@ -55,6 +58,20 @@ const Applications = () => {
           <h1 className="text-2xl font-bold text-gray-800">My Applications</h1>
           <p className="text-gray-600">Track all your job applications in one place</p>
         </div>
+
+        {isBlocked && (
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="p-4 flex items-center space-x-3">
+              <Lock className="h-5 w-5 text-red-600" />
+              <div>
+                <h3 className="font-semibold text-red-700">Your account is blocked</h3>
+                <p className="text-sm text-red-600">
+                  Your account has been blocked by the administrator. You cannot apply for new jobs until this restriction is lifted.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card className="bg-gray-50">

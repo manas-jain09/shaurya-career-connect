@@ -21,17 +21,32 @@ import {
   Clock,
   Eye,
   User,
-  Download
+  Download,
+  Trash2,
+  Lock
 } from 'lucide-react';
 import { StudentProfile } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const Students = () => {
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterVerified, setFilterVerified] = useState('all');
+  const [deleteStudentId, setDeleteStudentId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -51,6 +66,8 @@ const Students = () => {
         query = query.eq('is_verified', true);
       } else if (filterVerified === 'unverified') {
         query = query.eq('is_verified', false);
+      } else if (filterVerified === 'blocked') {
+        query = query.eq('is_blocked', true);
       }
 
       const { data, error } = await query;
@@ -72,18 +89,102 @@ const Students = () => {
     }
   };
 
+  const handleDeleteStudent = async () => {
+    if (!deleteStudentId) return;
+    
+    setDeleteLoading(true);
+    try {
+      // First, find the user_id associated with this student profile
+      const { data: studentData, error: studentError } = await supabase
+        .from('student_profiles')
+        .select('user_id')
+        .eq('id', deleteStudentId)
+        .single();
+      
+      if (studentError) throw studentError;
+      
+      // Delete from student_profiles (which will cascade to education details)
+      const { error: deleteProfileError } = await supabase
+        .from('student_profiles')
+        .delete()
+        .eq('id', deleteStudentId);
+        
+      if (deleteProfileError) throw deleteProfileError;
+      
+      // Delete any applications for this student
+      const { error: deleteAppsError } = await supabase
+        .from('job_applications')
+        .delete()
+        .eq('student_id', deleteStudentId);
+      
+      if (deleteAppsError && deleteAppsError.code !== 'PGRST116') {
+        throw deleteAppsError;
+      }
+      
+      // Delete any resume entries
+      const { error: deleteResumeError } = await supabase
+        .from('resumes')
+        .delete()
+        .eq('student_id', deleteStudentId);
+      
+      if (deleteResumeError && deleteResumeError.code !== 'PGRST116') {
+        throw deleteResumeError;
+      }
+      
+      // Delete notifications for this user
+      if (studentData?.user_id) {
+        const { error: deleteNotifError } = await supabase
+          .from('notifications')
+          .delete()
+          .eq('user_id', studentData.user_id);
+        
+        if (deleteNotifError && deleteNotifError.code !== 'PGRST116') {
+          throw deleteNotifError;
+        }
+      }
+      
+      // Remove the student from the list
+      setStudents(students.filter(s => s.id !== deleteStudentId));
+      
+      toast({
+        title: 'Success',
+        description: 'Student has been deleted successfully',
+      });
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete student profile',
+        variant: 'destructive',
+      });
+    } finally {
+      setDeleteLoading(false);
+      setShowDeleteDialog(false);
+      setDeleteStudentId(null);
+    }
+  };
+
+  const openDeleteDialog = (studentId: string) => {
+    setDeleteStudentId(studentId);
+    setShowDeleteDialog(true);
+  };
+
   const filteredStudents = students.filter(student => {
     const fullName = `${student.first_name} ${student.last_name}`.toLowerCase();
     const phone = student.phone.toLowerCase();
     return fullName.includes(searchTerm.toLowerCase()) || phone.includes(searchTerm.toLowerCase());
   });
 
-  const getVerificationBadge = (isVerified: boolean, status: string) => {
-    if (isVerified) {
+  const getVerificationBadge = (student: StudentProfile) => {
+    if (student.is_blocked) {
+      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+        <Lock size={14} className="mr-1" /> Blocked
+      </Badge>;
+    } else if (student.is_verified) {
       return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
         <CheckCircle size={14} className="mr-1" /> Verified
       </Badge>;
-    } else if (status === 'pending') {
+    } else if (student.verification_status === 'pending') {
       return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
         <Clock size={14} className="mr-1" /> Pending
       </Badge>;
@@ -162,6 +263,7 @@ const Students = () => {
               <option value="all">All Students</option>
               <option value="verified">Verified Only</option>
               <option value="unverified">Unverified Only</option>
+              <option value="blocked">Blocked Only</option>
             </select>
           </div>
         </div>
@@ -181,7 +283,7 @@ const Students = () => {
                       <TableHead>Gender</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Address</TableHead>
-                      <TableHead>Verification</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -194,15 +296,24 @@ const Students = () => {
                         <TableCell>{student.gender}</TableCell>
                         <TableCell>{student.phone}</TableCell>
                         <TableCell>{student.address || 'Not provided'}</TableCell>
-                        <TableCell>{getVerificationBadge(student.is_verified, student.verification_status)}</TableCell>
+                        <TableCell>{getVerificationBadge(student)}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => navigate(`/admin/verification/${student.id}`)}
-                          >
-                            <Eye size={16} className="mr-1" /> View Profile
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigate(`/admin/verification/${student.id}`)}
+                            >
+                              <Eye size={16} className="mr-1" /> View
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => openDeleteDialog(student.id as string)}
+                            >
+                              <Trash2 size={16} className="mr-1" /> Delete
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -218,6 +329,32 @@ const Students = () => {
           </>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the student's profile, 
+              education details, job applications, and all other associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteStudent();
+              }}
+              disabled={deleteLoading}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteLoading ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };

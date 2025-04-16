@@ -19,7 +19,9 @@ import {
   FileText,
   ArrowLeft,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { 
   StudentProfile, 
@@ -182,6 +184,73 @@ const VerificationDetail = () => {
     }
   };
 
+  const handleToggleBlock = async () => {
+    if (!profile || !id) return;
+
+    setActionLoading(true);
+    try {
+      const newBlockedStatus = !profile.is_blocked;
+      
+      const { error } = await supabase
+        .from('student_profiles')
+        .update({
+          is_blocked: newBlockedStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Update applications to rejected if blocking the user
+      if (newBlockedStatus) {
+        await supabase
+          .from('job_applications')
+          .update({
+            status: 'rejected',
+            admin_notes: 'User account was blocked by admin'
+          })
+          .eq('student_id', id)
+          .in('status', ['applied', 'under_review', 'shortlisted']);
+      }
+
+      // Create notification for the user
+      const notificationTitle = newBlockedStatus 
+        ? 'Account Blocked' 
+        : 'Account Unblocked';
+      
+      const notificationMsg = newBlockedStatus
+        ? 'Your account has been blocked by the administrator. You cannot apply for jobs or update your profile until it is unblocked.'
+        : 'Your account has been unblocked. You can now apply for jobs and update your profile.';
+
+      await supabase.from('notifications').insert({
+        user_id: profile.user_id,
+        title: notificationTitle,
+        message: notificationMsg,
+        is_read: false
+      });
+
+      // Update local state
+      setProfile({
+        ...profile,
+        is_blocked: newBlockedStatus
+      });
+
+      toast({
+        title: 'Success',
+        description: `User has been ${newBlockedStatus ? 'blocked' : 'unblocked'} successfully`,
+      });
+    } catch (error) {
+      console.error('Error updating block status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update block status',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <AdminLayout>
@@ -209,6 +278,8 @@ const VerificationDetail = () => {
     );
   }
 
+  const isApprovalDisabled = flaggedSections.length > 0;
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -226,6 +297,19 @@ const VerificationDetail = () => {
           
           <div className="flex items-center space-x-2">
             <Button
+              variant={profile.is_blocked ? "outline" : "destructive"}
+              size="sm"
+              onClick={handleToggleBlock}
+              disabled={actionLoading}
+              className={profile.is_blocked ? "text-green-600 hover:bg-green-50 border-green-200" : ""}
+            >
+              {profile.is_blocked ? (
+                <><Unlock size={16} className="mr-1" /> Unblock User</>
+              ) : (
+                <><Lock size={16} className="mr-1" /> Block User</>
+              )}
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               className="text-red-600 hover:bg-red-50 border-red-200"
@@ -239,12 +323,30 @@ const VerificationDetail = () => {
               size="sm"
               className="text-green-600 hover:bg-green-50 border-green-200"
               onClick={() => handleVerify(true)}
-              disabled={actionLoading}
+              disabled={actionLoading || isApprovalDisabled}
             >
               <CheckCircle2 size={16} className="mr-1" /> Approve
             </Button>
           </div>
         </div>
+        
+        {isApprovalDisabled && (
+          <div className="bg-amber-50 text-amber-800 p-3 rounded-md border border-amber-200 flex items-center">
+            <AlertTriangle size={18} className="mr-2 flex-shrink-0" />
+            <p className="text-sm">
+              Cannot approve profile while there are flagged sections. Remove all flags to enable approval.
+            </p>
+          </div>
+        )}
+
+        {profile.is_blocked && (
+          <div className="bg-red-50 text-red-800 p-3 rounded-md border border-red-200 flex items-center">
+            <Lock size={18} className="mr-2 flex-shrink-0" />
+            <p className="text-sm">
+              This user account is currently blocked. The user cannot apply for jobs or update their profile.
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1">

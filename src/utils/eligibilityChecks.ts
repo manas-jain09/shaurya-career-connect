@@ -32,31 +32,48 @@ export const checkJobEligibility = async (
       .single();
 
     // Check Class X marks
-    if (job.min_class_x_marks && classX && classX.marks < job.min_class_x_marks) {
-      reasons.push(`Class X marks (${classX.marks}%) below required ${job.min_class_x_marks}%`);
+    if (job.min_class_x_marks && classX) {
+      if (classX.is_cgpa) {
+        // If CGPA, check against CGPA requirement
+        if (job.min_class_x_cgpa && classX.marks < job.min_class_x_cgpa) {
+          reasons.push(`Class X CGPA (${classX.marks}) below required ${job.min_class_x_cgpa}`);
+        }
+      } else {
+        // If percentage, check against percentage requirement
+        if (classX.marks < job.min_class_x_marks) {
+          reasons.push(`Class X marks (${classX.marks}%) below required ${job.min_class_x_marks}%`);
+        }
+      }
     }
 
     // Check Class XII marks
-    if (job.min_class_xii_marks && classXII && classXII.marks < job.min_class_xii_marks) {
-      reasons.push(`Class XII marks (${classXII.marks}%) below required ${job.min_class_xii_marks}%`);
+    if (job.min_class_xii_marks && classXII) {
+      if (classXII.is_cgpa) {
+        // If CGPA, check against CGPA requirement
+        if (job.min_class_xii_cgpa && classXII.marks < job.min_class_xii_cgpa) {
+          reasons.push(`Class XII CGPA (${classXII.marks}) below required ${job.min_class_xii_cgpa}`);
+        }
+      } else {
+        // If percentage, check against percentage requirement
+        if (classXII.marks < job.min_class_xii_marks) {
+          reasons.push(`Class XII marks (${classXII.marks}%) below required ${job.min_class_xii_marks}%`);
+        }
+      }
     }
 
     // Check Graduation marks
-    if (job.min_graduation_marks && graduation && graduation.marks < job.min_graduation_marks) {
-      reasons.push(`Graduation marks (${graduation.marks}%) below required ${job.min_graduation_marks}%`);
-    }
-
-    // Check CGPA if that's what the job requires
-    if (job.min_class_x_cgpa && classX && classX.is_cgpa && classX.marks < job.min_class_x_cgpa) {
-      reasons.push(`Class X CGPA (${classX.marks}) below required ${job.min_class_x_cgpa}`);
-    }
-
-    if (job.min_class_xii_cgpa && classXII && classXII.is_cgpa && classXII.marks < job.min_class_xii_cgpa) {
-      reasons.push(`Class XII CGPA (${classXII.marks}) below required ${job.min_class_xii_cgpa}`);
-    }
-
-    if (job.min_graduation_cgpa && graduation && graduation.is_cgpa && graduation.marks < job.min_graduation_cgpa) {
-      reasons.push(`Graduation CGPA (${graduation.marks}) below required ${job.min_graduation_cgpa}`);
+    if (job.min_graduation_marks && graduation) {
+      if (graduation.is_cgpa) {
+        // If CGPA, check against CGPA requirement
+        if (job.min_graduation_cgpa && graduation.marks < job.min_graduation_cgpa) {
+          reasons.push(`Graduation CGPA (${graduation.marks}) below required ${job.min_graduation_cgpa}`);
+        }
+      } else {
+        // If percentage, check against percentage requirement
+        if (graduation.marks < job.min_graduation_marks) {
+          reasons.push(`Graduation marks (${graduation.marks}%) below required ${job.min_graduation_marks}%`);
+        }
+      }
     }
 
     // Check backlog status
@@ -77,13 +94,15 @@ export const checkJobEligibility = async (
     // Check eligible passing years
     if (
       job.eligible_passing_years && 
-      job.eligible_passing_years.length >.0 && 
+      job.eligible_passing_years.length > 0 && 
       graduation && 
       !job.eligible_passing_years.includes(graduation.passing_year)
     ) {
       reasons.push(`Your passing year (${graduation.passing_year}) is not among eligible years`);
     }
 
+    console.log('Eligibility check results:', { isEligible: reasons.length === 0, reasons });
+    
     return {
       isEligible: reasons.length === 0,
       reasons

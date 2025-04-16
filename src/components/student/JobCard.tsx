@@ -30,7 +30,6 @@ const JobCard: React.FC<JobCardProps> = ({
 }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isApplying, setIsApplying] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
@@ -163,10 +162,10 @@ const JobCard: React.FC<JobCardProps> = ({
           <div className="flex flex-col items-end">
             <Button
               variant="default"
-              disabled={!!disabledReason || isApplying}
+              disabled={!!disabledReason || isSubmitting}
               onClick={handleApply}
             >
-              {isApplying ? 'Applying...' : isApplied ? 'Applied' : 'Apply Now'}
+              {isSubmitting ? 'Applying...' : isApplied ? 'Applied' : 'Apply Now'}
             </Button>
             {disabledReason && (
               <p className="text-xs text-red-500 mt-1">{disabledReason}</p>
