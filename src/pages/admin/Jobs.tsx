@@ -32,6 +32,7 @@ import { format } from 'date-fns';
 import JobForm from '@/components/admin/JobForm';
 import JobDetails from '@/components/admin/JobDetails';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Jobs = () => {
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -226,81 +227,85 @@ const Jobs = () => {
         ) : (
           <>
             {filteredJobs.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>
-                        <div className="flex items-center cursor-pointer" onClick={() => handleSort('company')}>
-                          Company
-                          {sortField === 'company' && (
-                            <ArrowUpDown size={14} className="ml-1" />
-                          )}
-                        </div>
-                      </TableHead>
-                      <TableHead>Position</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Package</TableHead>
-                      <TableHead>
-                        <div className="flex items-center cursor-pointer" onClick={() => handleSort('deadline')}>
-                          Deadline
-                          {sortField === 'deadline' && (
-                            <ArrowUpDown size={14} className="ml-1" />
-                          )}
-                        </div>
-                      </TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredJobs.map((job) => (
-                      <TableRow key={job.id}>
-                        <TableCell className="font-medium">{job.company_name}</TableCell>
-                        <TableCell>{job.title}</TableCell>
-                        <TableCell>{job.location}</TableCell>
-                        <TableCell>{job.package}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Calendar size={14} className="mr-2 text-gray-500" />
-                            <span className={isPastDeadline(job.application_deadline) ? 'text-red-500' : ''}>
-                              {format(new Date(job.application_deadline), 'MMM dd, yyyy')}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(job.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleViewJob(job)}
-                            >
-                              <Eye size={14} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => handleEditJob(job)}
-                            >
-                              <Edit2 size={14} />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
-                              onClick={() => handleDeleteJob(job.id!)}
-                            >
-                              <Trash2 size={14} />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <div className="overflow-hidden rounded-lg border">
+                <ScrollArea className="max-h-[calc(100vh-280px)]">
+                  <div className="w-full">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>
+                            <div className="flex items-center cursor-pointer" onClick={() => handleSort('company')}>
+                              Company
+                              {sortField === 'company' && (
+                                <ArrowUpDown size={14} className="ml-1" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead>Position</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead>Package</TableHead>
+                          <TableHead>
+                            <div className="flex items-center cursor-pointer" onClick={() => handleSort('deadline')}>
+                              Deadline
+                              {sortField === 'deadline' && (
+                                <ArrowUpDown size={14} className="ml-1" />
+                              )}
+                            </div>
+                          </TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredJobs.map((job) => (
+                          <TableRow key={job.id}>
+                            <TableCell className="font-medium">{job.company_name}</TableCell>
+                            <TableCell>{job.title}</TableCell>
+                            <TableCell>{job.location}</TableCell>
+                            <TableCell>{job.package}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Calendar size={14} className="mr-2 text-gray-500" />
+                                <span className={isPastDeadline(job.application_deadline) ? 'text-red-500' : ''}>
+                                  {format(new Date(job.application_deadline), 'MMM dd, yyyy')}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(job.status)}</TableCell>
+                            <TableCell>
+                              <div className="flex space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleViewJob(job)}
+                                >
+                                  <Eye size={14} />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => handleEditJob(job)}
+                                >
+                                  <Edit2 size={14} />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                                  onClick={() => handleDeleteJob(job.id!)}
+                                >
+                                  <Trash2 size={14} />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ScrollArea>
               </div>
             ) : (
               <Card>
