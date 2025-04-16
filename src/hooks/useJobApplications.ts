@@ -57,7 +57,7 @@ export const useJobApplications = (): JobApplicationData => {
       setCanApply(isEligibleForJobs);
       
       // Fetch applications with job details
-      const { data, error: fetchError } = await supabase
+      const { data: appData, error: fetchError } = await supabase
         .from('job_applications')
         .select(`
           *,
@@ -72,13 +72,13 @@ export const useJobApplications = (): JobApplicationData => {
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      
+
       // Process and type-cast the data
-      const typedApplications: JobApplication[] = data?.map(app => ({
+      const typedApplications: JobApplication[] = (appData || []).map(app => ({
         ...app,
         status: app.status as JobApplicationStatus,
         job: app.job
-      })) || [];
+      }));
       
       console.log('Previous applications:', previousApplications);
       console.log('Current applications:', typedApplications);
