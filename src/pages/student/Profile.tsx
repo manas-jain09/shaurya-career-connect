@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,7 +20,6 @@ const ProfilePage = () => {
   const [editing, setEditing] = useState<string | null>(null);
   const [uploading, setUploading] = useState<boolean>(false);
 
-  // Form states
   const [profileForm, setProfileForm] = useState({
     firstName: '',
     lastName: '',
@@ -29,7 +27,6 @@ const ProfilePage = () => {
     address: '',
   });
 
-  // Get placement interest icon
   const getPlacementInterestIcon = () => {
     if (!profile?.placement_interest) return <Briefcase />;
     
@@ -45,7 +42,6 @@ const ProfilePage = () => {
     }
   };
 
-  // Get placement interest text
   const getPlacementInterestText = () => {
     if (!profile?.placement_interest) return 'Interested in Placement/Internship';
     
@@ -61,19 +57,16 @@ const ProfilePage = () => {
     }
   };
 
-  // Function to check if section is editable
   const isSectionEditable = (section: string) => {
     if (!profile) return false;
-    if (section === 'personal') return true; // Personal info always editable
-    return !profile.is_verified; // Other sections only editable if not verified
+    if (section === 'personal') return true;
+    return !profile.is_verified;
   };
 
-  // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
 
-    // Check if section is editable
     if (type !== 'resume' && !isSectionEditable(type)) {
       toast.error('You cannot modify this section after verification');
       return;
@@ -84,7 +77,6 @@ const ProfilePage = () => {
       let fileUrl = '';
       const folderPath = `student_${profile.id}`;
       
-      // Upload file
       fileUrl = await uploadFile(file, 'student_documents', folderPath) || '';
       
       if (!fileUrl) {
@@ -92,16 +84,13 @@ const ProfilePage = () => {
         return;
       }
 
-      // Update the database based on file type
       if (type === 'resume') {
         if (resume) {
-          // Update existing resume
           await supabase
             .from('resumes')
             .update({ file_url: fileUrl })
             .eq('id', resume.id);
         } else {
-          // Create new resume
           await supabase
             .from('resumes')
             .insert({ 
@@ -126,7 +115,6 @@ const ProfilePage = () => {
             .update({ marksheet_url: fileUrl })
             .eq('student_id', profile.id);
         } else {
-          // Create new graduation details if they don't exist
           await supabase
             .from('graduation_details')
             .insert({
@@ -151,7 +139,6 @@ const ProfilePage = () => {
     }
   };
 
-  // Edit profile handler
   const handleEditProfile = async () => {
     if (!profile) return;
     
@@ -175,7 +162,6 @@ const ProfilePage = () => {
     }
   };
 
-  // Initialize form when profile data is loaded
   React.useEffect(() => {
     if (profile) {
       setProfileForm({
@@ -205,7 +191,6 @@ const ProfilePage = () => {
           <p className="text-gray-600">View and update your profile information</p>
         </div>
         
-        {/* Verification Status */}
         <Card className={profile?.is_verified ? "bg-green-50" : "bg-yellow-50"}>
           <CardContent className="p-4">
             <div className="flex items-center">
@@ -235,37 +220,33 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* Placement Status */}
-        {profile && profile.is_verified && (
-          <Card className={isEligibleForJobs ? "bg-blue-50" : "bg-orange-50"}>
-            <CardContent className="p-4">
-              <div className="flex items-center">
-                {isEligibleForJobs ? (
-                  <>
-                    <Briefcase className="text-blue-500 mr-2" size={20} />
-                    <div>
-                      <p className="font-medium text-blue-700">Eligible for Placements</p>
-                      <p className="text-sm text-blue-600">You can apply for job postings</p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <AlertTriangle className="text-orange-500 mr-2" size={20} />
-                    <div>
-                      <p className="font-medium text-orange-700">Opted Out of Placements</p>
-                      <p className="text-sm text-orange-600">
-                        You have indicated interest in {profile.placement_interest === 'higher_studies' ? 'higher studies' : 
-                        profile.placement_interest === 'family_business' ? 'family business' : 'entrepreneurship'}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <Card className={isEligibleForJobs ? "bg-blue-50" : "bg-orange-50"}>
+          <CardContent className="p-4">
+            <div className="flex items-center">
+              {isEligibleForJobs ? (
+                <>
+                  <Briefcase className="text-blue-500 mr-2" size={20} />
+                  <div>
+                    <p className="font-medium text-blue-700">Eligible for Placements</p>
+                    <p className="text-sm text-blue-600">You can apply for job postings</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="text-orange-500 mr-2" size={20} />
+                  <div>
+                    <p className="font-medium text-orange-700">Opted Out of Placements</p>
+                    <p className="text-sm text-orange-600">
+                      You have indicated interest in {profile.placement_interest === 'higher_studies' ? 'higher studies' : 
+                      profile.placement_interest === 'family_business' ? 'family business' : 'entrepreneurship'}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
         
-        {/* Personal Information */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
@@ -361,7 +342,6 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* Education - Class X */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
@@ -371,7 +351,6 @@ const ProfilePage = () => {
                   size="sm" 
                   variant="outline" 
                   onClick={() => {
-                    // Edit Class X details logic would go here
                     toast.info('Edit functionality for education details will be implemented in a future update');
                   }}
                 >
@@ -460,7 +439,6 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* Education - Class XII */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
@@ -470,7 +448,6 @@ const ProfilePage = () => {
                   size="sm" 
                   variant="outline" 
                   onClick={() => {
-                    // Edit Class XII details logic would go here
                     toast.info('Edit functionality for education details will be implemented in a future update');
                   }}
                 >
@@ -559,7 +536,6 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* Education - Graduation */}
         <Card>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
@@ -569,7 +545,6 @@ const ProfilePage = () => {
                   size="sm" 
                   variant="outline" 
                   onClick={() => {
-                    // Edit Graduation details logic would go here
                     toast.info('Edit functionality for education details will be implemented in a future update');
                   }}
                 >
@@ -680,7 +655,7 @@ const ProfilePage = () => {
                     />
                   </label>
                 ) : (
-                  <Alert variant="warning">
+                  <Alert variant="default">
                     <AlertTriangle className="h-4 w-4" />
                     <AlertTitle>Access Restricted</AlertTitle>
                     <AlertDescription>
@@ -693,7 +668,6 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
         
-        {/* Resume */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg font-semibold">Resume</CardTitle>
