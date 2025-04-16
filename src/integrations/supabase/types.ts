@@ -171,6 +171,7 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
+          offer_letter_url: string | null
           status: string
           student_id: string
           updated_at: string
@@ -180,6 +181,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
+          offer_letter_url?: string | null
           status?: string
           student_id: string
           updated_at?: string
@@ -189,6 +191,7 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
+          offer_letter_url?: string | null
           status?: string
           student_id?: string
           updated_at?: string
@@ -349,14 +352,18 @@ export type Database = {
       student_profiles: {
         Row: {
           address: string | null
+          agreed_to_policies: boolean | null
           created_at: string
           dob: string
           first_name: string
+          flagged_sections: string[] | null
           gender: string
           id: string
+          is_blocked: boolean | null
           is_verified: boolean
           last_name: string
           phone: string
+          placement_interest: string | null
           updated_at: string
           user_id: string
           verification_notes: string | null
@@ -364,14 +371,18 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          agreed_to_policies?: boolean | null
           created_at?: string
           dob: string
           first_name: string
+          flagged_sections?: string[] | null
           gender: string
           id?: string
+          is_blocked?: boolean | null
           is_verified?: boolean
           last_name: string
           phone: string
+          placement_interest?: string | null
           updated_at?: string
           user_id: string
           verification_notes?: string | null
@@ -379,14 +390,18 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          agreed_to_policies?: boolean | null
           created_at?: string
           dob?: string
           first_name?: string
+          flagged_sections?: string[] | null
           gender?: string
           id?: string
+          is_blocked?: boolean | null
           is_verified?: boolean
           last_name?: string
           phone?: string
+          placement_interest?: string | null
           updated_at?: string
           user_id?: string
           verification_notes?: string | null

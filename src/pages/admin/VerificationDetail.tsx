@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -55,7 +54,6 @@ const VerificationDetail = () => {
   const fetchStudentData = async () => {
     setLoading(true);
     try {
-      // Fetch student profile
       const { data: profileData, error: profileError } = await supabase
         .from('student_profiles')
         .select('*')
@@ -66,12 +64,10 @@ const VerificationDetail = () => {
       setProfile(profileData);
       setNotes(profileData.verification_notes || '');
       
-      // Set flagged sections if they exist
       if (profileData.flagged_sections) {
         setFlaggedSections(profileData.flagged_sections);
       }
 
-      // Fetch Class X details
       const { data: classXData } = await supabase
         .from('class_x_details')
         .select('*')
@@ -80,7 +76,6 @@ const VerificationDetail = () => {
       
       setClassX(classXData);
 
-      // Fetch Class XII details
       const { data: classXIIData } = await supabase
         .from('class_xii_details')
         .select('*')
@@ -89,7 +84,6 @@ const VerificationDetail = () => {
       
       setClassXII(classXIIData);
 
-      // Fetch Graduation details
       const { data: graduationData } = await supabase
         .from('graduation_details')
         .select('*')
@@ -98,7 +92,6 @@ const VerificationDetail = () => {
       
       setGraduation(graduationData);
 
-      // Fetch Resume
       const { data: resumeData } = await supabase
         .from('resumes')
         .select('*')
@@ -118,6 +111,16 @@ const VerificationDetail = () => {
     }
   };
 
+  const handleToggleFlag = (section: string) => {
+    setFlaggedSections(prev => {
+      if (prev?.includes(section)) {
+        return prev.filter(s => s !== section);
+      } else {
+        return [...(prev || []), section];
+      }
+    });
+  };
+
   const handleVerify = async (approved: boolean) => {
     if (!profile || !id) return;
 
@@ -131,15 +134,14 @@ const VerificationDetail = () => {
           verification_status: status,
           is_verified: approved,
           verification_notes: notes,
-          flagged_sections: flaggedSections,
+          flagged_sections: flaggedSections || [],
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
 
       if (error) throw error;
 
-      // Create notification for the student
-      const notificationTitle = approved 
+      let notificationTitle = approved 
         ? 'Profile Verification Approved' 
         : 'Profile Verification Rejected';
       
@@ -178,16 +180,6 @@ const VerificationDetail = () => {
     } finally {
       setActionLoading(false);
     }
-  };
-
-  const handleToggleFlag = (section: string) => {
-    setFlaggedSections(prev => {
-      if (prev.includes(section)) {
-        return prev.filter(s => s !== section);
-      } else {
-        return [...prev, section];
-      }
-    });
   };
 
   if (loading) {
@@ -322,7 +314,6 @@ const VerificationDetail = () => {
               </TabsList>
               <div className="mt-4">
                 <TabsContent value="education" className="space-y-5">
-                  {/* Class X Details */}
                   <Card className={flaggedSections.includes('class_x') ? 'border-yellow-300' : ''}>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                       <CardTitle className="text-base">Class X Details</CardTitle>
@@ -381,7 +372,6 @@ const VerificationDetail = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Class XII Details */}
                   <Card className={flaggedSections.includes('class_xii') ? 'border-yellow-300' : ''}>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                       <CardTitle className="text-base">Class XII Details</CardTitle>
@@ -440,7 +430,6 @@ const VerificationDetail = () => {
                     </CardContent>
                   </Card>
 
-                  {/* Graduation Details */}
                   <Card className={flaggedSections.includes('graduation') ? 'border-yellow-300' : ''}>
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
                       <CardTitle className="text-base">Graduation Details</CardTitle>

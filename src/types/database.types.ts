@@ -1,4 +1,3 @@
-
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -12,6 +11,9 @@ export interface StudentProfile {
   verification_status: string;
   verification_notes?: string;
   flagged_sections?: string[];
+  placement_interest?: string;
+  agreed_to_policies?: boolean;
+  is_blocked?: boolean;
   created_at?: string;
   updated_at?: string;
 }
