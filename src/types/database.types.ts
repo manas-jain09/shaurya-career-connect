@@ -96,7 +96,7 @@ export interface JobPosting {
   updated_at?: string;
 }
 
-export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'selected' | 'rejected' | 'internship' | 'ppo' | 'placement';
+export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected' | 'internship' | 'ppo';
 
 export interface JobApplication {
   id?: string;

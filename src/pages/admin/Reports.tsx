@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,8 +49,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('students');
@@ -73,7 +72,7 @@ const Reports = () => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
   const [applicationSearch, setApplicationSearch] = useState('');
-  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string[]>(['applied', 'under_review', 'shortlisted', 'selected', 'rejected', 'internship', 'ppo']);
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string[]>([]);
   const [applicationDateFilter, setApplicationDateFilter] = useState<Date | undefined>(undefined);
   const [applicationCourseFilter, setApplicationCourseFilter] = useState<string[]>([]);
   const [applicationPassingYearFilter, setApplicationPassingYearFilter] = useState<string[]>([]);
@@ -189,44 +188,31 @@ const Reports = () => {
   const fetchApplicationsData = async () => {
     setLoading(true);
     try {
-      // First fetch applications with job details
       const { data: applicationsData, error: applicationsError } = await supabase
         .from('job_applications')
         .select(`
           *,
-          job:job_id(title, company_name, location, package)
+          job:job_id(title, company_name, location, package),
+          student_profile:student_id(first_name, last_name, phone, is_verified, department)
         `)
         .order('created_at', { ascending: false });
       
       if (applicationsError) throw applicationsError;
       
-      // Then fetch student profiles separately
-      const studentIds = applicationsData.map(app => app.student_id);
-      const { data: studentProfiles, error: profilesError } = await supabase
-        .from('student_profiles')
-        .select('id, first_name, last_name, phone, is_verified, department')
-        .in('id', studentIds);
-      
-      if (profilesError) throw profilesError;
-      
-      // Fetch graduation details separately
+      // Fetch graduation details for all students
       const { data: gradData, error: gradError } = await supabase
         .from('graduation_details')
-        .select('*')
-        .in('student_id', studentIds);
+        .select('*');
       
       if (gradError) throw gradError;
       
-      // Combine all the data manually
-      const fullApplicationsData = applicationsData.map(app => {
-        const studentProfile = studentProfiles.find(p => p.id === app.student_id) || null;
+      // Combine application data with graduation details
+      const applicationsWithGraduation = applicationsData.map(app => {
         const gradDetails = gradData.find(g => g.student_id === app.student_id) || null;
-        
         return {
           ...app,
-          student_profile: studentProfile,
           graduation_details: gradDetails
-        } as JobApplication;
+        };
       });
       
       // Extract unique courses, passing years, and departments
@@ -234,7 +220,7 @@ const Reports = () => {
       const allPassingYears = new Set<number>();
       const allDepartments = new Set<string>();
       
-      fullApplicationsData.forEach(app => {
+      applicationsWithGraduation.forEach(app => {
         if (app.graduation_details?.course) {
           allCourses.add(app.graduation_details.course);
         }
@@ -250,8 +236,8 @@ const Reports = () => {
       let minPackageValue = Infinity;
       let maxPackageValue = 0;
       
-      fullApplicationsData.forEach(app => {
-        const packageValue = parseFloat((app.job?.package || '0').replace(/[^\d.]/g, '')) || 0;
+      applicationsWithGraduation.forEach(app => {
+        const packageValue = parseFloat(app.job?.package.replace(/[^\d.]/g, '')) || 0;
         if (packageValue < minPackageValue) minPackageValue = packageValue;
         if (packageValue > maxPackageValue) maxPackageValue = packageValue;
       });
@@ -264,8 +250,8 @@ const Reports = () => {
       setPassingYears(Array.from(allPassingYears).sort());
       setDepartments(Array.from(allDepartments).sort());
       
-      setApplications(fullApplicationsData);
-      setFilteredApplications(fullApplicationsData);
+      setApplications(applicationsWithGraduation as JobApplication[]);
+      setFilteredApplications(applicationsWithGraduation as JobApplication[]);
     } catch (error) {
       console.error('Error fetching applications data:', error);
       toast({
@@ -825,23 +811,6 @@ const Reports = () => {
     }));
   };
 
-  const getBadgeClassName = (status: JobApplicationStatus) => {
-    switch (status) {
-      case 'selected':
-        return "bg-green-100 text-green-800 hover:bg-green-100";
-      case 'rejected':
-        return "bg-red-100 text-red-800 hover:bg-red-100";
-      case 'shortlisted':
-      case 'under_review':
-        return "bg-blue-100 text-blue-800 hover:bg-blue-100";
-      case 'internship':
-      case 'ppo':
-        return "bg-purple-100 text-purple-800 hover:bg-purple-100";
-      default:
-        return "bg-gray-100 text-gray-800 hover:bg-gray-100";
-    }
-  };
-
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -867,580 +836,697 @@ const Reports = () => {
                 <Briefcase size={16} className="mr-2" /> Jobs
               </TabsTrigger>
             </TabsList>
-
-            <TabsContent value="students" className="mt-4">
+            
+            {/* Students Tab */}
+            <TabsContent value="students" className="mt-6 space-y-6">
               <Card>
-                <CardHeader className="pb-0">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div>
-                      <CardTitle>Students</CardTitle>
-                      <p className="text-sm text-gray-500">List of all registered students</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <CSVLink
-                        data={getStudentsCSVData()}
-                        filename="students_report.csv"
-                        className="inline-flex"
-                      >
-                        <Button variant="outline" size="sm" className="flex items-center gap-1">
-                          <Download size={16} />
-                          Export CSV
-                        </Button>
-                      </CSVLink>
-                    </div>
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg">Students Report</CardTitle>
+                  <CSVLink 
+                    data={getStudentsCSVData()} 
+                    filename={'students-report.csv'} 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    <Download size={16} className="mr-2" /> Export CSV
+                  </CSVLink>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent>
                   <div className="space-y-4">
-                    <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-                      <div className="w-full md:w-auto grow">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            placeholder="Search students..."
-                            className="pl-8"
-                            value={studentSearch}
-                            onChange={(e) => setStudentSearch(e.target.value)}
-                          />
-                        </div>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <Input
+                          placeholder="Search students..."
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                          className="pl-8"
+                        />
                       </div>
-                      <Select
-                        value={studentVerificationFilter}
-                        onValueChange={setStudentVerificationFilter}
-                      >
-                        <SelectTrigger className="w-full md:w-[180px]">
-                          <SelectValue placeholder="Verification Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Statuses</SelectItem>
-                          <SelectItem value="verified">Verified</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="flagged">Flagged</SelectItem>
-                          <SelectItem value="blocked">Blocked</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {renderMultiSelect(
-                        "Course",
-                        courses,
-                        studentCourseFilter,
-                        setStudentCourseFilter
-                      )}
-                      {renderMultiSelect(
-                        "Passing Year",
-                        passingYears,
-                        studentPassingYearFilter,
-                        setStudentPassingYearFilter
-                      )}
-                      {renderMultiSelect(
-                        "Department",
-                        departments,
-                        studentDepartmentFilter,
-                        setStudentDepartmentFilter
-                      )}
-                      <Select
-                        value={studentSelectionFilter}
-                        onValueChange={setStudentSelectionFilter}
-                      >
-                        <SelectTrigger className="w-full md:w-[180px]">
-                          <SelectValue placeholder="Selection Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Students</SelectItem>
-                          <SelectItem value="selected">Selected</SelectItem>
-                          <SelectItem value="not_selected">Not Selected</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      
+                      <div className="flex flex-wrap gap-3">
+                        <Select value={studentVerificationFilter} onValueChange={setStudentVerificationFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Verification Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="verified">Verified</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="flagged">Flagged</SelectItem>
+                            <SelectItem value="blocked">Blocked</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        {renderMultiSelect("Courses", courses, studentCourseFilter, setStudentCourseFilter)}
+                        
+                        {renderMultiSelect("Passing Years", passingYears, studentPassingYearFilter, setStudentPassingYearFilter)}
+                        
+                        {renderMultiSelect("Departments", departments, studentDepartmentFilter, setStudentDepartmentFilter)}
+                        
+                        <Select value={studentSelectionFilter} onValueChange={setStudentSelectionFilter}>
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Selection Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Students</SelectItem>
+                            <SelectItem value="selected">Selected</SelectItem>
+                            <SelectItem value="not_selected">Not Selected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     
-                    <ScrollArea className="w-full overflow-auto">
-                      <div className="min-w-[1000px]">
-                        <Table>
-                          <TableHeader>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>Contact</TableHead>
+                            <TableHead>
+                              {renderSortButton('department', 'Department', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('course', 'Course', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('passing_year', 'Passing Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredStudents.length === 0 ? (
                             <TableRow>
-                              <TableHead>
-                                {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                              </TableHead>
-                              <TableHead>Phone</TableHead>
-                              <TableHead>
-                                {renderSortButton('department', 'Department', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('course', 'Course', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('passing_year', 'Passing Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
-                              </TableHead>
-                              <TableHead>Selected</TableHead>
+                              <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                                No students found
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredStudents.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={8} className="text-center py-4 text-gray-500">
-                                  No students found matching the criteria
+                          ) : (
+                            filteredStudents.map((student) => (
+                              <TableRow key={student.id}>
+                                <TableCell>
+                                  <div className="font-medium">
+                                    {student.first_name} {student.last_name}
+                                  </div>
+                                  {student.is_selected && (
+                                    <Badge className="mt-1 bg-green-100 text-green-800">Selected</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <div>{student.phone}</div>
+                                  <div className="text-xs text-gray-500">{student.email}</div>
+                                </TableCell>
+                                <TableCell>
+                                  {student.department || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {student.graduation?.course || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {student.graduation?.college_name || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {student.graduation?.passing_year || 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    {student.is_verified ? (
+                                      <Badge className="bg-green-100 text-green-800">Verified</Badge>
+                                    ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
+                                      <Badge className="bg-amber-100 text-amber-800">Flagged</Badge>
+                                    ) : (
+                                      <Badge className="bg-blue-100 text-blue-800">Pending</Badge>
+                                    )}
+                                    
+                                    {student.is_blocked && (
+                                      <Badge className="bg-red-100 text-red-800">Blocked</Badge>
+                                    )}
+                                  </div>
                                 </TableCell>
                               </TableRow>
-                            ) : (
-                              filteredStudents.map((student) => (
-                                <TableRow key={student.id}>
-                                  <TableCell className="font-medium">
-                                    {student.first_name} {student.last_name}
-                                  </TableCell>
-                                  <TableCell>{student.phone}</TableCell>
-                                  <TableCell>{student.department || '-'}</TableCell>
-                                  <TableCell>{student.graduation?.college_name || '-'}</TableCell>
-                                  <TableCell>{student.graduation?.course || '-'}</TableCell>
-                                  <TableCell>{student.graduation?.passing_year || '-'}</TableCell>
-                                  <TableCell>
-                                    {student.is_verified ? (
-                                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Verified</Badge>
-                                    ) : student.is_blocked ? (
-                                      <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Blocked</Badge>
-                                    ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
-                                      <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Flagged</Badge>
-                                    ) : (
-                                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {student.is_selected ? (
-                                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Yes</Badge>
-                                    ) : (
-                                      <span className="text-gray-500">No</span>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </ScrollArea>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-
-            <TabsContent value="applications" className="mt-4">
+            
+            {/* Applications Tab */}
+            <TabsContent value="applications" className="mt-6 space-y-6">
               <Card>
-                <CardHeader className="pb-0">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div>
-                      <CardTitle>Applications</CardTitle>
-                      <p className="text-sm text-gray-500">List of all job applications</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <CSVLink
-                        data={getApplicationsCSVData()}
-                        filename="applications_report.csv"
-                        className="inline-flex"
-                      >
-                        <Button variant="outline" size="sm" className="flex items-center gap-1">
-                          <Download size={16} />
-                          Export CSV
-                        </Button>
-                      </CSVLink>
-                    </div>
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg">Applications Report</CardTitle>
+                  <CSVLink 
+                    data={getApplicationsCSVData()} 
+                    filename={'applications-report.csv'} 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    <Download size={16} className="mr-2" /> Export CSV
+                  </CSVLink>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent>
                   <div className="space-y-4">
-                    <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-                      <div className="w-full md:w-auto grow">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            placeholder="Search applications..."
-                            className="pl-8"
-                            value={applicationSearch}
-                            onChange={(e) => setApplicationSearch(e.target.value)}
-                          />
-                        </div>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <Input
+                          placeholder="Search applications..."
+                          value={applicationSearch}
+                          onChange={(e) => setApplicationSearch(e.target.value)}
+                          className="pl-8"
+                        />
                       </div>
                       
-                      {renderMultiSelect(
-                        "Status",
-                        ['applied', 'under_review', 'shortlisted', 'selected', 'rejected', 'internship', 'ppo'],
-                        applicationStatusFilter,
-                        setApplicationStatusFilter
-                      )}
-                      
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full md:w-[180px] justify-between ${
-                              applicationDateFilter ? "text-foreground" : "text-muted-foreground"
-                            }`}
-                          >
-                            {applicationDateFilter ? (
-                              format(applicationDateFilter, "PPP")
-                            ) : (
-                              "Application Date"
+                      <div className="flex flex-wrap gap-3">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-[180px] justify-between">
+                              <span className="truncate">Status</span>
+                              {applicationStatusFilter.length > 0 && (
+                                <Badge className="ml-2 bg-primary text-primary-foreground">{applicationStatusFilter.length}</Badge>
+                              )}
+                              <Filter className="ml-2 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[220px]">
+                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => setApplicationStatusFilter([])}
+                              className="justify-between"
+                            >
+                              Clear all
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('applied')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'applied']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'applied'));
+                                }
+                              }}
+                            >
+                              Applied
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('under_review')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'under_review']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'under_review'));
+                                }
+                              }}
+                            >
+                              Under Review
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('shortlisted')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'shortlisted']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'shortlisted'));
+                                }
+                              }}
+                            >
+                              Shortlisted
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('rejected')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'rejected']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'rejected'));
+                                }
+                              }}
+                            >
+                              Rejected
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('selected')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'selected']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'selected'));
+                                }
+                              }}
+                            >
+                              Selected
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('internship')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'internship']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'internship'));
+                                }
+                              }}
+                            >
+                              Internship
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('ppo')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'ppo']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'ppo'));
+                                }
+                              }}
+                            >
+                              PPO
+                            </DropdownMenuCheckboxItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {renderMultiSelect("Courses", courses, applicationCourseFilter, setApplicationCourseFilter)}
+                        
+                        {renderMultiSelect("Passing Years", passingYears, applicationPassingYearFilter, setApplicationPassingYearFilter)}
+                        
+                        {renderMultiSelect("Departments", departments, applicationDepartmentFilter, setApplicationDepartmentFilter)}
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className="w-[180px] justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {applicationDateFilter ? (
+                                format(applicationDateFilter, "PPP")
+                              ) : (
+                                <span>Application Date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={applicationDateFilter}
+                              onSelect={setApplicationDateFilter}
+                              initialFocus
+                            />
+                            {applicationDateFilter && (
+                              <div className="p-3 border-t">
+                                <Button 
+                                  variant="ghost" 
+                                  onClick={() => setApplicationDateFilter(undefined)}
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  Clear Date
+                                </Button>
+                              </div>
                             )}
-                            <CalendarIcon className="ml-2 h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={applicationDateFilter}
-                            onSelect={setApplicationDateFilter}
-                            initialFocus
-                          />
-                          {applicationDateFilter && (
-                            <div className="flex justify-end p-2 border-t">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setApplicationDateFilter(undefined)}
-                              >
-                                Clear
-                              </Button>
-                            </div>
-                          )}
-                        </PopoverContent>
-                      </Popover>
-                      
-                      {renderMultiSelect(
-                        "Course",
-                        courses,
-                        applicationCourseFilter,
-                        setApplicationCourseFilter
-                      )}
-                      
-                      {renderMultiSelect(
-                        "Passing Year",
-                        passingYears,
-                        applicationPassingYearFilter,
-                        setApplicationPassingYearFilter
-                      )}
-                      
-                      {renderMultiSelect(
-                        "Department",
-                        departments,
-                        applicationDepartmentFilter,
-                        setApplicationDepartmentFilter
-                      )}
-                      
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full md:w-[180px] justify-between"
-                          >
-                            Package Range
-                            <SlidersHorizontal className="ml-2 h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
-                          <div className="space-y-4 p-2">
-                            <h4 className="font-medium">Package Range (LPA)</h4>
-                            <div className="flex gap-4 items-center">
-                              <Input
-                                type="number"
-                                value={packageRange[0]}
-                                onChange={(e) => {
-                                  const newMin = Math.max(0, parseFloat(e.target.value) || 0);
-                                  setPackageRange([newMin, Math.max(newMin, packageRange[1])]);
-                                }}
-                                className="w-20"
-                              />
+                          </PopoverContent>
+                        </Popover>
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-[180px] justify-start text-left font-normal"
+                            >
+                              <SlidersHorizontal className="mr-2 h-4 w-4" />
+                              <span>Package Range</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4">
+                            <div className="space-y-4">
+                              <h4 className="font-medium">Package Range</h4>
+                              <div className="flex justify-between">
+                                <span>₹{packageRange[0]}L</span>
+                                <span>₹{packageRange[1]}L</span>
+                              </div>
                               <Slider
+                                defaultValue={[minPackage, maxPackage]}
                                 value={packageRange}
                                 min={minPackage}
                                 max={maxPackage}
                                 step={0.5}
                                 onValueChange={(value) => setPackageRange(value as [number, number])}
-                                className="flex-1"
-                              />
-                              <Input
-                                type="number"
-                                value={packageRange[1]}
-                                onChange={(e) => {
-                                  const newMax = Math.min(maxPackage, parseFloat(e.target.value) || maxPackage);
-                                  setPackageRange([Math.min(packageRange[0], newMax), newMax]);
-                                }}
-                                className="w-20"
+                                className="w-full"
                               />
                             </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                     
-                    <ScrollArea className="w-full overflow-auto">
-                      <div className="min-w-[1000px]">
-                        <Table>
-                          <TableHeader>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('job', 'Job', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('company', 'Company', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('date', 'Applied On', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>Offer Letter</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredApplications.length === 0 ? (
                             <TableRow>
-                              <TableHead>
-                                {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                              </TableHead>
-                              <TableHead>Phone</TableHead>
-                              <TableHead>
-                                {renderSortButton('job', 'Job Title', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('company', 'Company', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                              </TableHead>
-                              <TableHead>Location</TableHead>
-                              <TableHead>
-                                {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('date', 'Applied On', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
-                              </TableHead>
+                              <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                                No applications found
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredApplications.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={8} className="text-center py-4 text-gray-500">
-                                  No applications found matching the criteria
+                          ) : (
+                            filteredApplications.map((application) => (
+                              <TableRow key={application.id}>
+                                <TableCell>
+                                  <div className="font-medium">
+                                    {application.student_profile?.first_name} {application.student_profile?.last_name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {application.student_profile?.phone}
+                                  </div>
+                                  {application.student_profile?.department && (
+                                    <div className="text-xs text-gray-500">
+                                      {application.student_profile.department}
+                                    </div>
+                                  )}
+                                </TableCell>
+                                <TableCell>{application.job?.title || 'N/A'}</TableCell>
+                                <TableCell>{application.job?.company_name || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {application.created_at 
+                                    ? new Date(application.created_at).toLocaleDateString() 
+                                    : 'N/A'
+                                  }
+                                </TableCell>
+                                <TableCell>
+                                  <div>
+                                    <Badge 
+                                      className={
+                                        application.status === 'selected' ? 'bg-green-100 text-green-800' :
+                                        application.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                        application.status === 'applied' ? 'bg-blue-100 text-blue-800' :
+                                        application.status === 'under_review' ? 'bg-yellow-100 text-yellow-800' :
+                                        application.status === 'shortlisted' ? 'bg-purple-100 text-purple-800' :
+                                        application.status === 'internship' ? 'bg-indigo-100 text-indigo-800' :
+                                        application.status === 'ppo' ? 'bg-pink-100 text-pink-800' :
+                                        'bg-gray-100 text-gray-800'
+                                      }
+                                    >
+                                      {application.status === 'ppo' 
+                                        ? 'PPO' 
+                                        : application.status.replace('_', ' ')
+                                      }
+                                    </Badge>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{application.job?.package || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {application.offer_letter_url ? (
+                                    <a 
+                                      href={application.offer_letter_url} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:underline text-sm"
+                                    >
+                                      View
+                                    </a>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">None</span>
+                                  )}
                                 </TableCell>
                               </TableRow>
-                            ) : (
-                              filteredApplications.map((app) => (
-                                <TableRow key={app.id}>
-                                  <TableCell className="font-medium">
-                                    {app.student_profile?.first_name || ''} {app.student_profile?.last_name || ''}
-                                  </TableCell>
-                                  <TableCell>{app.student_profile?.phone || '-'}</TableCell>
-                                  <TableCell>{app.job?.title || '-'}</TableCell>
-                                  <TableCell>{app.job?.company_name || '-'}</TableCell>
-                                  <TableCell>{app.job?.location || '-'}</TableCell>
-                                  <TableCell>{app.job?.package || '-'}</TableCell>
-                                  <TableCell>
-                                    <Badge className={getBadgeClassName(app.status)}>
-                                      {app.status === 'ppo' ? 'PPO' : app.status.charAt(0).toUpperCase() + app.status.slice(1).replace('_', ' ')}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell>
-                                    {app.created_at ? new Date(app.created_at).toLocaleDateString() : '-'}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </ScrollArea>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-
-            <TabsContent value="jobs" className="mt-4">
+            
+            {/* Jobs Tab */}
+            <TabsContent value="jobs" className="mt-6 space-y-6">
               <Card>
-                <CardHeader className="pb-0">
-                  <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div>
-                      <CardTitle>Jobs</CardTitle>
-                      <p className="text-sm text-gray-500">List of all job postings</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <CSVLink
-                        data={getJobsCSVData()}
-                        filename="jobs_report.csv"
-                        className="inline-flex"
-                      >
-                        <Button variant="outline" size="sm" className="flex items-center gap-1">
-                          <Download size={16} />
-                          Export CSV
-                        </Button>
-                      </CSVLink>
-                    </div>
-                  </div>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-lg">Jobs Report</CardTitle>
+                  <CSVLink 
+                    data={getJobsCSVData()} 
+                    filename={'jobs-report.csv'} 
+                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  >
+                    <Download size={16} className="mr-2" /> Export CSV
+                  </CSVLink>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent>
                   <div className="space-y-4">
-                    <div className="flex flex-col md:flex-row gap-4 flex-wrap">
-                      <div className="w-full md:w-auto grow">
-                        <div className="relative">
-                          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            placeholder="Search jobs..."
-                            className="pl-8"
-                            value={jobSearch}
-                            onChange={(e) => setJobSearch(e.target.value)}
-                          />
-                        </div>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                        <Input
+                          placeholder="Search jobs..."
+                          value={jobSearch}
+                          onChange={(e) => setJobSearch(e.target.value)}
+                          className="pl-8"
+                        />
                       </div>
                       
-                      {renderMultiSelect(
-                        "Status",
-                        ['active', 'inactive', 'draft', 'closed'],
-                        jobStatusFilter,
-                        setJobStatusFilter
-                      )}
-                      
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={`w-full md:w-[180px] justify-between ${
-                              jobDeadlineFilter ? "text-foreground" : "text-muted-foreground"
-                            }`}
-                          >
-                            {jobDeadlineFilter ? (
-                              format(jobDeadlineFilter, "PPP")
-                            ) : (
-                              "Deadline"
+                      <div className="flex flex-wrap gap-3">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-[180px] justify-between">
+                              <span className="truncate">Status</span>
+                              {jobStatusFilter.length > 0 && (
+                                <Badge className="ml-2 bg-primary text-primary-foreground">{jobStatusFilter.length}</Badge>
+                              )}
+                              <Filter className="ml-2 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[220px]">
+                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => setJobStatusFilter([])}
+                              className="justify-between"
+                            >
+                              Clear all
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem
+                              checked={jobStatusFilter.includes('active')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setJobStatusFilter([...jobStatusFilter, 'active']);
+                                } else {
+                                  setJobStatusFilter(jobStatusFilter.filter(s => s !== 'active'));
+                                }
+                              }}
+                            >
+                              Active
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={jobStatusFilter.includes('closed')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setJobStatusFilter([...jobStatusFilter, 'closed']);
+                                } else {
+                                  setJobStatusFilter(jobStatusFilter.filter(s => s !== 'closed'));
+                                }
+                              }}
+                            >
+                              Closed
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={jobStatusFilter.includes('draft')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setJobStatusFilter([...jobStatusFilter, 'draft']);
+                                } else {
+                                  setJobStatusFilter(jobStatusFilter.filter(s => s !== 'draft'));
+                                }
+                              }}
+                            >
+                              Draft
+                            </DropdownMenuCheckboxItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {renderMultiSelect("Location", locations, jobLocationFilter, setJobLocationFilter)}
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant={"outline"}
+                              className="w-[180px] justify-start text-left font-normal"
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {jobDeadlineFilter ? (
+                                format(jobDeadlineFilter, "PPP")
+                              ) : (
+                                <span>Deadline</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={jobDeadlineFilter}
+                              onSelect={setJobDeadlineFilter}
+                              initialFocus
+                            />
+                            {jobDeadlineFilter && (
+                              <div className="p-3 border-t">
+                                <Button 
+                                  variant="ghost" 
+                                  onClick={() => setJobDeadlineFilter(undefined)}
+                                  size="sm"
+                                  className="w-full"
+                                >
+                                  Clear Date
+                                </Button>
+                              </div>
                             )}
-                            <CalendarIcon className="ml-2 h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={jobDeadlineFilter}
-                            onSelect={setJobDeadlineFilter}
-                            initialFocus
-                          />
-                          {jobDeadlineFilter && (
-                            <div className="flex justify-end p-2 border-t">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setJobDeadlineFilter(undefined)}
-                              >
-                                Clear
-                              </Button>
-                            </div>
-                          )}
-                        </PopoverContent>
-                      </Popover>
-                      
-                      {renderMultiSelect(
-                        "Location",
-                        locations,
-                        jobLocationFilter,
-                        setJobLocationFilter
-                      )}
-                      
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="w-full md:w-[180px] justify-between"
-                          >
-                            Selected Students
-                            <SlidersHorizontal className="ml-2 h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80">
-                          <div className="space-y-4 p-2">
-                            <h4 className="font-medium">Selected Students Range</h4>
-                            <div className="flex gap-4 items-center">
-                              <Input
-                                type="number"
-                                value={selectedStudentsFilter[0]}
-                                onChange={(e) => {
-                                  const newMin = Math.max(0, parseInt(e.target.value) || 0);
-                                  setSelectedStudentsFilter([newMin, Math.max(newMin, selectedStudentsFilter[1])]);
-                                }}
-                                className="w-20"
-                              />
+                          </PopoverContent>
+                        </Popover>
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-[180px] justify-start text-left font-normal"
+                            >
+                              <Users className="mr-2 h-4 w-4" />
+                              <span>Selected Students</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4">
+                            <div className="space-y-4">
+                              <h4 className="font-medium">Selected Students Range</h4>
+                              <div className="flex justify-between">
+                                <span>{selectedStudentsFilter[0]}</span>
+                                <span>{selectedStudentsFilter[1]}</span>
+                              </div>
                               <Slider
+                                defaultValue={[0, maxSelectedStudents]}
                                 value={selectedStudentsFilter}
                                 min={0}
-                                max={maxSelectedStudents}
+                                max={maxSelectedStudents > 0 ? maxSelectedStudents : 100}
                                 step={1}
                                 onValueChange={(value) => setSelectedStudentsFilter(value as [number, number])}
-                                className="flex-1"
-                              />
-                              <Input
-                                type="number"
-                                value={selectedStudentsFilter[1]}
-                                onChange={(e) => {
-                                  const newMax = Math.min(maxSelectedStudents, parseInt(e.target.value) || maxSelectedStudents);
-                                  setSelectedStudentsFilter([Math.min(selectedStudentsFilter[0], newMax), newMax]);
-                                }}
-                                className="w-20"
+                                className="w-full"
                               />
                             </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
                     
-                    <ScrollArea className="w-full overflow-auto">
-                      <div className="min-w-[1000px]">
-                        <Table>
-                          <TableHeader>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              {renderSortButton('title', 'Job', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('company', 'Company', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('location', 'Location', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('package', 'Package', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('applications', 'Applications', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('selected', 'Selected', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('deadline', 'Deadline', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredJobs.length === 0 ? (
                             <TableRow>
-                              <TableHead>
-                                {renderSortButton('title', 'Job Title', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('company', 'Company', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('location', 'Location', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('package', 'Package', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('applications', 'Applications', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('selected', 'Selected', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('deadline', 'Deadline', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
-                              <TableHead>
-                                {renderSortButton('status', 'Status', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
-                              </TableHead>
+                              <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                                No jobs found
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredJobs.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={8} className="text-center py-4 text-gray-500">
-                                  No jobs found matching the criteria
+                          ) : (
+                            filteredJobs.map((job) => (
+                              <TableRow key={job.id}>
+                                <TableCell>
+                                  <div className="font-medium">{job.title}</div>
+                                </TableCell>
+                                <TableCell>{job.company_name}</TableCell>
+                                <TableCell>{job.location}</TableCell>
+                                <TableCell>{job.package}</TableCell>
+                                <TableCell>
+                                  <Badge className="bg-blue-100 text-blue-800">
+                                    {job.application_count}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className="bg-green-100 text-green-800">
+                                    {job.selected_count}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {job.application_deadline 
+                                    ? new Date(job.application_deadline).toLocaleDateString() 
+                                    : 'N/A'
+                                  }
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    className={
+                                      job.status === 'active' ? 'bg-green-100 text-green-800' :
+                                      job.status === 'closed' ? 'bg-red-100 text-red-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }
+                                  >
+                                    {job.status}
+                                  </Badge>
                                 </TableCell>
                               </TableRow>
-                            ) : (
-                              filteredJobs.map((job) => (
-                                <TableRow key={job.id}>
-                                  <TableCell className="font-medium">{job.title}</TableCell>
-                                  <TableCell>{job.company_name}</TableCell>
-                                  <TableCell>{job.location}</TableCell>
-                                  <TableCell>{job.package}</TableCell>
-                                  <TableCell>{job.application_count}</TableCell>
-                                  <TableCell>{job.selected_count}</TableCell>
-                                  <TableCell>
-                                    {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : '-'}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge className={
-                                      job.status === 'active' ? "bg-green-100 text-green-800 hover:bg-green-100" :
-                                      job.status === 'inactive' ? "bg-orange-100 text-orange-800 hover:bg-orange-100" : 
-                                      job.status === 'closed' ? "bg-red-100 text-red-800 hover:bg-red-100" :
-                                      "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                                    }>
-                                      {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                                    </Badge>
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </ScrollArea>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { StudentProfile, ClassXDetails, ClassXIIDetails, GraduationDetails, Resume } from '@/types/database.types';
 import { useAuth } from '@/contexts/AuthContext';
-import { isFinalStatus } from '@/utils/statusHelpers';
 
 interface StudentProfileData {
   profile: StudentProfile | null;
@@ -15,8 +14,6 @@ interface StudentProfileData {
   error: string | null;
   refreshData: () => Promise<void>;
   isEligibleForJobs: boolean;
-  isProfileLocked: boolean;
-  acceptedJobInfo: { company?: string; position?: string; status?: string } | null;
 }
 
 export const useStudentProfile = (profileId?: string): StudentProfileData => {
@@ -29,8 +26,6 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
-  const [isProfileLocked, setIsProfileLocked] = useState<boolean>(false);
-  const [acceptedJobInfo, setAcceptedJobInfo] = useState<{ company?: string; position?: string; status?: string } | null>(null);
 
   // Use the provided profileId or get it from the user
   const studentProfileId = profileId || user?.profileId;
@@ -55,44 +50,15 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
       if (profileError) throw profileError;
       setProfile(profileData);
 
-      // Check if student has a job offer accepted (selected, internship, ppo, or placement status)
-      const { data: jobApplications, error: appError } = await supabase
-        .from('job_applications')
-        .select(`
-          status,
-          job:job_id(title, company_name)
-        `)
-        .eq('student_id', studentProfileId)
-        .filter('status', 'in', '(selected,internship,ppo,placement)');
-
-      if (!appError && jobApplications && jobApplications.length > 0) {
-        // Student has an accepted job offer - their profile should be locked
-        setIsProfileLocked(true);
-        
-        const acceptedJob = jobApplications[0];
-        setAcceptedJobInfo({
-          company: acceptedJob.job?.company_name,
-          position: acceptedJob.job?.title,
-          status: acceptedJob.status
-        });
-      } else {
-        setIsProfileLocked(false);
-        setAcceptedJobInfo(null);
-      }
-
       // Determine job eligibility based on verification status and placement interest
       // The student is eligible for jobs if they are verified AND they have chosen placement/internship
-      // AND they don't already have an accepted job offer
       const isVerified = profileData.is_verified || false;
       const placementInterest = profileData.placement_interest || '';
       
-      const isEligible = isVerified && 
-                        placementInterest === 'placement/internship' && 
-                        !isProfileLocked;
-                        
+      const isEligible = isVerified && placementInterest === 'placement/internship';
       setIsEligibleForJobs(isEligible);
       
-      console.log('Eligibility check:', { isVerified, placementInterest, isProfileLocked, isEligible });
+      console.log('Eligibility check:', { isVerified, placementInterest, isEligible });
 
       // Fetch Class X details
       const { data: classXData, error: classXError } = await supabase
@@ -155,8 +121,6 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
     isLoading,
     error,
     refreshData: fetchProfileData,
-    isEligibleForJobs,
-    isProfileLocked,
-    acceptedJobInfo
+    isEligibleForJobs
   };
 };

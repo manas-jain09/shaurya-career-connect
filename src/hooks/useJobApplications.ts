@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
@@ -19,7 +20,6 @@ interface JobApplicationData {
     selected: number;
     internship: number;
     ppo: number;
-    placement: number;
   };
   canApply: boolean;
 }
@@ -38,8 +38,7 @@ export const useJobApplications = (): JobApplicationData => {
     rejected: 0,
     selected: 0,
     internship: 0,
-    ppo: 0,
-    placement: 0
+    ppo: 0
   });
   const [canApply, setCanApply] = useState(false);
   const [previousApplications, setPreviousApplications] = useState<JobApplication[]>([]);
@@ -54,9 +53,11 @@ export const useJobApplications = (): JobApplicationData => {
     setError(null);
 
     try {
+      // Set canApply based on profile eligibility
       setCanApply(isEligibleForJobs);
       
-      const { data: appData, error: fetchError } = await supabase
+      // Fetch applications with job details
+      const { data, error: fetchError } = await supabase
         .from('job_applications')
         .select(`
           *,
@@ -71,16 +72,18 @@ export const useJobApplications = (): JobApplicationData => {
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-
-      const typedApplications: JobApplication[] = (appData || []).map(app => ({
+      
+      // Process and type-cast the data
+      const typedApplications: JobApplication[] = data?.map(app => ({
         ...app,
         status: app.status as JobApplicationStatus,
         job: app.job
-      }));
+      })) || [];
       
       console.log('Previous applications:', previousApplications);
       console.log('Current applications:', typedApplications);
       
+      // Check for status changes and show notifications
       if (previousApplications.length > 0) {
         typedApplications.forEach(currentApp => {
           const prevApp = previousApplications.find(app => app.id === currentApp.id);
@@ -111,15 +114,13 @@ export const useJobApplications = (): JobApplicationData => {
               case 'ppo':
                 statusMessage = 'has been converted to PPO! Congratulations!';
                 break;
-              case 'placement':
-                statusMessage = 'has been placed! Congratulations!';
-                break;
               default:
                 statusMessage = 'status has been updated';
             }
             
             toast(`Your application for ${jobTitle} at ${companyName} ${statusMessage}`);
             
+            // Create a notification record in the database
             if (user) {
               supabase
                 .from('notifications')
@@ -139,9 +140,11 @@ export const useJobApplications = (): JobApplicationData => {
         });
       }
       
+      // Save current applications for future comparison
       setPreviousApplications(typedApplications);
       setApplications(typedApplications);
       
+      // Calculate counts
       if (typedApplications.length > 0) {
         const total = typedApplications.length;
         const applied = typedApplications.filter(app => app.status === 'applied').length;
@@ -151,7 +154,6 @@ export const useJobApplications = (): JobApplicationData => {
         const selected = typedApplications.filter(app => app.status === 'selected').length;
         const internship = typedApplications.filter(app => app.status === 'internship').length;
         const ppo = typedApplications.filter(app => app.status === 'ppo').length;
-        const placement = typedApplications.filter(app => app.status === 'placement').length;
         
         setCounts({
           total,
@@ -161,8 +163,7 @@ export const useJobApplications = (): JobApplicationData => {
           rejected,
           selected,
           internship,
-          ppo,
-          placement
+          ppo
         });
       } else {
         setCounts({
@@ -173,8 +174,7 @@ export const useJobApplications = (): JobApplicationData => {
           rejected: 0,
           selected: 0,
           internship: 0,
-          ppo: 0,
-          placement: 0
+          ppo: 0
         });
       }
     } catch (err) {
@@ -185,6 +185,7 @@ export const useJobApplications = (): JobApplicationData => {
     }
   };
 
+  // Set up real-time subscription for application status updates
   useEffect(() => {
     if (!profile || !user) return;
     

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -42,7 +43,6 @@ const statusColors: Record<JobApplicationStatus, string> = {
   'selected': 'bg-purple-100 text-purple-800',
   'internship': 'bg-indigo-100 text-indigo-800',
   'ppo': 'bg-pink-100 text-pink-800',
-  'placement': 'bg-green-100 text-green-800',
 };
 
 const StatusBadge: React.FC<{ status: JobApplicationStatus }> = ({ status }) => {
@@ -109,6 +109,7 @@ const Applications = () => {
   useEffect(() => {
     let filtered = applications;
     
+    // Filter by search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(app => 
@@ -119,6 +120,7 @@ const Applications = () => {
       );
     }
     
+    // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(app => app.status === statusFilter);
     }
@@ -146,16 +148,19 @@ const Applications = () => {
     try {
       setUploadingOfferLetter(true);
       
+      // Create a unique filename using the application ID and timestamp
       const fileExt = offerLetterFile.name.split('.').pop();
       const fileName = `${selectedApplication.id}-${Date.now()}.${fileExt}`;
       const filePath = `offer-letters/${fileName}`;
       
+      // Upload file to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('documents')
         .upload(filePath, offerLetterFile);
       
       if (uploadError) throw uploadError;
       
+      // Get the public URL
       const { data } = supabase.storage
         .from('documents')
         .getPublicUrl(filePath);
@@ -182,6 +187,7 @@ const Applications = () => {
     try {
       setUpdatingStatus(true);
       
+      // Upload offer letter if file is selected and status is selected, internship, or ppo
       let offerLetterUrl = selectedApplication.offer_letter_url;
       if (offerLetterFile && ['selected', 'internship', 'ppo'].includes(newStatus)) {
         const uploadedUrl = await uploadOfferLetter();
@@ -190,6 +196,7 @@ const Applications = () => {
         }
       }
       
+      // Update application status
       const { error } = await supabase
         .from('job_applications')
         .update({
@@ -202,6 +209,7 @@ const Applications = () => {
       
       if (error) throw error;
       
+      // Create notification for the student
       const statusDisplay = newStatus === 'ppo' ? 'PPO' : newStatus.replace('_', ' ');
       const notificationData = {
         user_id: selectedApplication.student_id,
@@ -222,6 +230,7 @@ const Applications = () => {
         description: 'Application status updated successfully'
       });
       
+      // Refresh applications
       fetchApplications();
       setDialogOpen(false);
     } catch (error) {
@@ -295,7 +304,6 @@ const Applications = () => {
                 <SelectItem value="selected">Selected</SelectItem>
                 <SelectItem value="internship">Internship</SelectItem>
                 <SelectItem value="ppo">PPO</SelectItem>
-                <SelectItem value="placement">Placement</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -445,10 +453,6 @@ const Applications = () => {
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="ppo" id="ppo" />
                     <Label htmlFor="ppo">PPO</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="placement" id="placement" />
-                    <Label htmlFor="placement">Placement</Label>
                   </div>
                 </RadioGroup>
               </div>
