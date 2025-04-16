@@ -14,6 +14,7 @@ interface StudentProfileData {
   error: string | null;
   refreshData: () => Promise<void>;
   isEligibleForJobs: boolean;
+  is_frozen: boolean;
 }
 
 export const useStudentProfile = (profileId?: string): StudentProfileData => {
@@ -127,6 +128,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
     isLoading,
     error,
     refreshData: fetchProfileData,
-    isEligibleForJobs
+    isEligibleForJobs,
+    is_frozen
   };
 };
