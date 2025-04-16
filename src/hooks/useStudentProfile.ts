@@ -52,7 +52,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
 
       // Determine job eligibility based on verification status and placement interest
       const isVerified = profileData.is_verified;
-      const placementInterest = profileData.placement_interest || 'placement/internship';
+      const placementInterest = profileData.placement_interest || '';
       const isEligible = isVerified && placementInterest === 'placement/internship';
       setIsEligibleForJobs(isEligible);
 

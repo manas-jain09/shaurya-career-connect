@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Notification } from '@/types/database.types';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 interface NotificationData {
   notifications: Notification[];
@@ -20,6 +21,7 @@ export const useNotifications = (): NotificationData => {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [previousNotifications, setPreviousNotifications] = useState<Notification[]>([]);
 
   const fetchNotifications = async () => {
     if (!user) {
@@ -41,6 +43,20 @@ export const useNotifications = (): NotificationData => {
       
       // Type-cast the data
       const typedNotifications: Notification[] = data || [];
+      
+      // Check for new notifications and show toasts
+      if (previousNotifications.length > 0) {
+        const prevIds = previousNotifications.map(n => n.id);
+        const newNotifications = typedNotifications.filter(n => !prevIds.includes(n.id));
+        
+        newNotifications.forEach(notification => {
+          toast(notification.title, {
+            description: notification.message,
+          });
+        });
+      }
+      
+      setPreviousNotifications(typedNotifications);
       setNotifications(typedNotifications);
       setUnreadCount(typedNotifications.filter(n => !n.is_read).length || 0);
     } catch (err) {
@@ -101,6 +117,32 @@ export const useNotifications = (): NotificationData => {
       throw err;
     }
   };
+
+  // Set up real-time subscription for new notifications
+  useEffect(() => {
+    if (!user) return;
+    
+    const channel = supabase
+      .channel('notification-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('New notification:', payload);
+          fetchNotifications();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (user) {

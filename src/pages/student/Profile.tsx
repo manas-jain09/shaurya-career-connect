@@ -27,6 +27,35 @@ const ProfilePage = () => {
     address: '',
   });
 
+  const [classXForm, setClassXForm] = useState({
+    schoolName: '',
+    board: '',
+    marks: '',
+    passingYear: '',
+    isCgpa: false,
+    cgpaScale: '10'
+  });
+
+  const [classXIIForm, setClassXIIForm] = useState({
+    schoolName: '',
+    board: '',
+    marks: '',
+    passingYear: '',
+    isCgpa: false,
+    cgpaScale: '10'
+  });
+
+  const [graduationForm, setGraduationForm] = useState({
+    collegeName: '',
+    course: '',
+    marks: '',
+    passingYear: '',
+    hasBacklog: false,
+    isCgpa: false,
+    cgpaScale: '10',
+    division: ''
+  });
+
   const getPlacementInterestIcon = () => {
     if (!profile?.placement_interest) return <Briefcase />;
     
@@ -162,6 +191,99 @@ const ProfilePage = () => {
     }
   };
 
+  const handleEditEducation = async (section: string) => {
+    if (!profile || !isSectionEditable(section)) {
+      toast.error('You cannot modify this section after verification');
+      return;
+    }
+    
+    setEditing(section);
+    
+    if (section === 'class_x' && classX) {
+      setClassXForm({
+        schoolName: classX.school_name,
+        board: classX.board,
+        marks: classX.marks.toString(),
+        passingYear: classX.passing_year.toString(),
+        isCgpa: classX.is_cgpa,
+        cgpaScale: classX.cgpa_scale?.toString() || '10'
+      });
+    } else if (section === 'class_xii' && classXII) {
+      setClassXIIForm({
+        schoolName: classXII.school_name,
+        board: classXII.board,
+        marks: classXII.marks.toString(),
+        passingYear: classXII.passing_year.toString(),
+        isCgpa: classXII.is_cgpa,
+        cgpaScale: classXII.cgpa_scale?.toString() || '10'
+      });
+    } else if (section === 'graduation' && graduation) {
+      setGraduationForm({
+        collegeName: graduation.college_name,
+        course: graduation.course,
+        marks: graduation.marks.toString(),
+        passingYear: graduation.passing_year.toString(),
+        hasBacklog: graduation.has_backlog,
+        isCgpa: graduation.is_cgpa,
+        cgpaScale: graduation.cgpa_scale?.toString() || '10',
+        division: graduation.division || ''
+      });
+    }
+  };
+
+  const handleSaveEducation = async (section: string) => {
+    if (!profile) return;
+    
+    try {
+      if (section === 'class_x') {
+        await supabase
+          .from('class_x_details')
+          .update({
+            school_name: classXForm.schoolName,
+            board: classXForm.board,
+            marks: Number(classXForm.marks),
+            passing_year: Number(classXForm.passingYear),
+            is_cgpa: classXForm.isCgpa,
+            cgpa_scale: classXForm.isCgpa ? Number(classXForm.cgpaScale) : null
+          })
+          .eq('student_id', profile.id);
+      } else if (section === 'class_xii') {
+        await supabase
+          .from('class_xii_details')
+          .update({
+            school_name: classXIIForm.schoolName,
+            board: classXIIForm.board,
+            marks: Number(classXIIForm.marks),
+            passing_year: Number(classXIIForm.passingYear),
+            is_cgpa: classXIIForm.isCgpa,
+            cgpa_scale: classXIIForm.isCgpa ? Number(classXIIForm.cgpaScale) : null
+          })
+          .eq('student_id', profile.id);
+      } else if (section === 'graduation') {
+        await supabase
+          .from('graduation_details')
+          .update({
+            college_name: graduationForm.collegeName,
+            course: graduationForm.course,
+            marks: Number(graduationForm.marks),
+            passing_year: Number(graduationForm.passingYear),
+            has_backlog: graduationForm.hasBacklog,
+            is_cgpa: graduationForm.isCgpa,
+            cgpa_scale: graduationForm.isCgpa ? Number(graduationForm.cgpaScale) : null,
+            division: graduationForm.division || null
+          })
+          .eq('student_id', profile.id);
+      }
+      
+      await refreshData();
+      setEditing(null);
+      toast.success('Education details updated successfully');
+    } catch (error) {
+      console.error('Error updating education details:', error);
+      toast.error('Failed to update education details');
+    }
+  };
+
   React.useEffect(() => {
     if (profile) {
       setProfileForm({
@@ -237,8 +359,14 @@ const ProfilePage = () => {
                   <div>
                     <p className="font-medium text-orange-700">Opted Out of Placements</p>
                     <p className="text-sm text-orange-600">
-                      You have indicated interest in {profile.placement_interest === 'higher_studies' ? 'higher studies' : 
-                      profile.placement_interest === 'family_business' ? 'family business' : 'entrepreneurship'}
+                      {profile?.placement_interest === 'placement/internship' 
+                        ? 'Your profile needs to be verified before you can apply for jobs'
+                        : `You have indicated interest in ${profile?.placement_interest === 'higher_studies' 
+                           ? 'higher studies' 
+                           : profile?.placement_interest === 'family_business' 
+                             ? 'family business' 
+                             : 'entrepreneurship'}`
+                      }
                     </p>
                   </div>
                 </>
@@ -346,13 +474,11 @@ const ProfilePage = () => {
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle className="text-lg font-semibold">Class X Details</CardTitle>
-              {!profile?.is_verified && classX && (
+              {isSectionEditable('class_x') && classX && (
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  onClick={() => {
-                    toast.info('Edit functionality for education details will be implemented in a future update');
-                  }}
+                  onClick={() => handleEditEducation('class_x')}
                 >
                   <EditIcon size={16} className="mr-1" /> Edit
                 </Button>
@@ -362,24 +488,67 @@ const ProfilePage = () => {
           <CardContent className="pt-4">
             {classX ? (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">School Name</p>
-                    <p>{classX.school_name}</p>
+                {editing === 'class_x' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="schoolName">School Name</Label>
+                      <Input 
+                        id="schoolName" 
+                        value={classXForm.schoolName} 
+                        onChange={e => setClassXForm({...classXForm, schoolName: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="board">Board</Label>
+                      <Input 
+                        id="board" 
+                        value={classXForm.board} 
+                        onChange={e => setClassXForm({...classXForm, board: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="marks">Marks</Label>
+                      <Input 
+                        id="marks" 
+                        type="number"
+                        value={classXForm.marks} 
+                        onChange={e => setClassXForm({...classXForm, marks: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="passingYear">Passing Year</Label>
+                      <Input 
+                        id="passingYear" 
+                        type="number"
+                        value={classXForm.passingYear} 
+                        onChange={e => setClassXForm({...classXForm, passingYear: e.target.value})}
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex justify-end space-x-2 mt-4">
+                      <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                      <Button onClick={() => handleSaveEducation('class_x')}>Save Changes</Button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Board</p>
-                    <p>{classX.board}</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">School Name</p>
+                      <p>{classX.school_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Board</p>
+                      <p>{classX.board}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Marks</p>
+                      <p>{classX.marks}{classX.is_cgpa ? ` CGPA (Scale: ${classX.cgpa_scale})` : '%'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Passing Year</p>
+                      <p>{classX.passing_year}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Marks</p>
-                    <p>{classX.marks}{classX.is_cgpa ? ` CGPA (Scale: ${classX.cgpa_scale})` : '%'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Passing Year</p>
-                    <p>{classX.passing_year}</p>
-                  </div>
-                </div>
+                )}
                 
                 <Separator className="my-4" />
                 
@@ -443,13 +612,11 @@ const ProfilePage = () => {
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle className="text-lg font-semibold">Class XII Details</CardTitle>
-              {!profile?.is_verified && classXII && (
+              {isSectionEditable('class_xii') && classXII && (
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  onClick={() => {
-                    toast.info('Edit functionality for education details will be implemented in a future update');
-                  }}
+                  onClick={() => handleEditEducation('class_xii')}
                 >
                   <EditIcon size={16} className="mr-1" /> Edit
                 </Button>
@@ -459,24 +626,67 @@ const ProfilePage = () => {
           <CardContent className="pt-4">
             {classXII ? (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">School Name</p>
-                    <p>{classXII.school_name}</p>
+                {editing === 'class_xii' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="schoolName">School Name</Label>
+                      <Input 
+                        id="schoolName" 
+                        value={classXIIForm.schoolName} 
+                        onChange={e => setClassXIIForm({...classXIIForm, schoolName: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="board">Board</Label>
+                      <Input 
+                        id="board" 
+                        value={classXIIForm.board} 
+                        onChange={e => setClassXIIForm({...classXIIForm, board: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="marks">Marks</Label>
+                      <Input 
+                        id="marks" 
+                        type="number"
+                        value={classXIIForm.marks} 
+                        onChange={e => setClassXIIForm({...classXIIForm, marks: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="passingYear">Passing Year</Label>
+                      <Input 
+                        id="passingYear" 
+                        type="number"
+                        value={classXIIForm.passingYear} 
+                        onChange={e => setClassXIIForm({...classXIIForm, passingYear: e.target.value})}
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex justify-end space-x-2 mt-4">
+                      <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                      <Button onClick={() => handleSaveEducation('class_xii')}>Save Changes</Button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Board</p>
-                    <p>{classXII.board}</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">School Name</p>
+                      <p>{classXII.school_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Board</p>
+                      <p>{classXII.board}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Marks</p>
+                      <p>{classXII.marks}{classXII.is_cgpa ? ` CGPA (Scale: ${classXII.cgpa_scale})` : '%'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Passing Year</p>
+                      <p>{classXII.passing_year}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Marks</p>
-                    <p>{classXII.marks}{classXII.is_cgpa ? ` CGPA (Scale: ${classXII.cgpa_scale})` : '%'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Passing Year</p>
-                    <p>{classXII.passing_year}</p>
-                  </div>
-                </div>
+                )}
                 
                 <Separator className="my-4" />
                 
@@ -540,13 +750,11 @@ const ProfilePage = () => {
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
               <CardTitle className="text-lg font-semibold">Graduation Details</CardTitle>
-              {!profile?.is_verified && graduation && (
+              {isSectionEditable('graduation') && graduation && (
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  onClick={() => {
-                    toast.info('Edit functionality for education details will be implemented in a future update');
-                  }}
+                  onClick={() => handleEditEducation('graduation')}
                 >
                   <EditIcon size={16} className="mr-1" /> Edit
                 </Button>
@@ -556,36 +764,98 @@ const ProfilePage = () => {
           <CardContent className="pt-4">
             {graduation ? (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">College Name</p>
-                    <p>{graduation.college_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Course</p>
-                    <p>{graduation.course}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Marks</p>
-                    <p>{graduation.marks}{graduation.is_cgpa ? ` CGPA (Scale: ${graduation.cgpa_scale})` : '%'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Passing Year</p>
-                    <p>{graduation.passing_year}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Backlog Status</p>
-                    <p className={graduation.has_backlog ? "text-red-500" : "text-green-500"}>
-                      {graduation.has_backlog ? "Has Backlog" : "No Backlog"}
-                    </p>
-                  </div>
-                  {graduation.division && (
+                {editing === 'graduation' ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Division</p>
-                      <p>{graduation.division}</p>
+                      <Label htmlFor="collegeName">College Name</Label>
+                      <Input 
+                        id="collegeName" 
+                        value={graduationForm.collegeName} 
+                        onChange={e => setGraduationForm({...graduationForm, collegeName: e.target.value})}
+                      />
                     </div>
-                  )}
-                </div>
+                    <div>
+                      <Label htmlFor="course">Course</Label>
+                      <Input 
+                        id="course" 
+                        value={graduationForm.course} 
+                        onChange={e => setGraduationForm({...graduationForm, course: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="marks">Marks</Label>
+                      <Input 
+                        id="marks" 
+                        type="number"
+                        value={graduationForm.marks} 
+                        onChange={e => setGraduationForm({...graduationForm, marks: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="passingYear">Passing Year</Label>
+                      <Input 
+                        id="passingYear" 
+                        type="number"
+                        value={graduationForm.passingYear} 
+                        onChange={e => setGraduationForm({...graduationForm, passingYear: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="hasBacklog">Backlog Status</Label>
+                      <div className="flex items-center mt-1">
+                        <input 
+                          type="checkbox" 
+                          checked={graduationForm.hasBacklog} 
+                          onChange={e => setGraduationForm({...graduationForm, hasBacklog: e.target.checked})}
+                        />
+                        <span className="ml-2">{graduationForm.hasBacklog ? "Has Backlog" : "No Backlog"}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="division">Division</Label>
+                      <Input 
+                        id="division" 
+                        value={graduationForm.division} 
+                        onChange={e => setGraduationForm({...graduationForm, division: e.target.value})}
+                      />
+                    </div>
+                    <div className="md:col-span-2 flex justify-end space-x-2 mt-4">
+                      <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                      <Button onClick={() => handleSaveEducation('graduation')}>Save Changes</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">College Name</p>
+                      <p>{graduation.college_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Course</p>
+                      <p>{graduation.course}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Marks</p>
+                      <p>{graduation.marks}{graduation.is_cgpa ? ` CGPA (Scale: ${graduation.cgpa_scale})` : '%'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Passing Year</p>
+                      <p>{graduation.passing_year}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">Backlog Status</p>
+                      <p className={graduation.has_backlog ? "text-red-500" : "text-green-500"}>
+                        {graduation.has_backlog ? "Has Backlog" : "No Backlog"}
+                      </p>
+                    </div>
+                    {graduation.division && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">Division</p>
+                        <p>{graduation.division}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 
                 <Separator className="my-4" />
                 

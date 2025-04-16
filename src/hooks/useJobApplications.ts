@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentProfile } from './useStudentProfile';
+import { toast } from 'sonner';
 
 interface JobApplicationData {
   applications: JobApplication[];
@@ -36,6 +37,7 @@ export const useJobApplications = (): JobApplicationData => {
     selected: 0
   });
   const [canApply, setCanApply] = useState(false);
+  const [previousApplications, setPreviousApplications] = useState<JobApplication[]>([]);
 
   const fetchApplications = async () => {
     if (!profile) {
@@ -74,6 +76,39 @@ export const useJobApplications = (): JobApplicationData => {
         job: app.job
       })) || [];
       
+      // Check for status changes and show notifications
+      if (previousApplications.length > 0) {
+        typedApplications.forEach(currentApp => {
+          const prevApp = previousApplications.find(app => app.id === currentApp.id);
+          if (prevApp && prevApp.status !== currentApp.status) {
+            const jobTitle = currentApp.job?.title || 'a job';
+            const companyName = currentApp.job?.company_name || 'a company';
+            
+            let statusMessage = '';
+            switch (currentApp.status) {
+              case 'under_review':
+                statusMessage = 'is now under review';
+                break;
+              case 'shortlisted':
+                statusMessage = 'has been shortlisted';
+                break;
+              case 'rejected':
+                statusMessage = 'has been rejected';
+                break;
+              case 'selected':
+                statusMessage = 'has been selected! Congratulations!';
+                break;
+              default:
+                statusMessage = 'status has been updated';
+            }
+            
+            toast(`Your application for ${jobTitle} at ${companyName} ${statusMessage}`);
+          }
+        });
+      }
+      
+      // Save current applications for future comparison
+      setPreviousApplications(typedApplications);
       setApplications(typedApplications);
       
       // Calculate counts
@@ -101,6 +136,32 @@ export const useJobApplications = (): JobApplicationData => {
       setIsLoading(false);
     }
   };
+
+  // Set up real-time subscription for application status updates
+  useEffect(() => {
+    if (!profile) return;
+    
+    const channel = supabase
+      .channel('application-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'job_applications',
+          filter: `student_id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('Application updated:', payload);
+          fetchApplications();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile]);
 
   useEffect(() => {
     if (profile) {
