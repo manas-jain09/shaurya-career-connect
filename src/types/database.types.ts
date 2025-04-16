@@ -17,6 +17,7 @@ export interface StudentProfile {
   created_at?: string;
   updated_at?: string;
   department?: string;
+  has_placement?: boolean;
 }
 
 export interface ClassXDetails {
@@ -96,7 +97,7 @@ export interface JobPosting {
   updated_at?: string;
 }
 
-export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected' | 'internship' | 'ppo';
+export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected' | 'internship' | 'ppo' | 'placement';
 
 export interface JobApplication {
   id?: string;
