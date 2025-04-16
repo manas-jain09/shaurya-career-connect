@@ -1,3 +1,4 @@
+
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -124,6 +125,11 @@ export interface JobApplication {
     course?: string;
     passing_year?: number;
     college_name?: string;
+  };
+  education?: {
+    classX?: ClassXDetails;
+    classXII?: ClassXIIDetails;
+    graduation?: GraduationDetails;
   };
 }
 

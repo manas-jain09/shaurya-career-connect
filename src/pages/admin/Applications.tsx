@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { 
@@ -155,13 +154,14 @@ const Applications = () => {
 
         return {
           ...app,
+          status: app.status as JobApplicationStatus,
           student_profile: studentProfile,
           education: {
             classX,
             classXII,
             graduation
           }
-        };
+        } as JobApplication;
       });
 
       // Extract unique courses, passing years, and departments for filters
@@ -372,8 +372,8 @@ const Applications = () => {
     }
   };
 
-  const handleSelectAll = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.checked) {
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
       setSelectedApplications(filteredApplications.map(app => app.id!));
     } else {
       setSelectedApplications([]);
@@ -460,7 +460,6 @@ const Applications = () => {
     graduationMarksRange
   ]);
 
-  // Render multi-select dropdown
   const renderMultiSelect = (
     label: string, 
     options: string[] | number[], 
@@ -919,83 +918,4 @@ const Applications = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value as JobApplicationStatus)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select new status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="applied">Applied</SelectItem>
-                <SelectItem value="under_review">Under Review</SelectItem>
-                <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                <SelectItem value="selected">Selected</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-                <SelectItem value="internship">Internship</SelectItem>
-                <SelectItem value="ppo">PPO</SelectItem>
-                <SelectItem value="placement">Placement</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowBulkUpdateDialog(false)}>Cancel</Button>
-            <Button onClick={handleBulkUpdate}>Update Applications</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Offer Upload Modal */}
-      <Dialog open={showOfferUploadModal} onOpenChange={setShowOfferUploadModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Upload Offer Letter</DialogTitle>
-            <DialogDescription>
-              Upload the offer letter for this application
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              type="file"
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  setOfferFile(e.target.files[0]);
-                }
-              }}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowOfferUploadModal(false)}>Cancel</Button>
-            <Button onClick={handleUploadOffer} disabled={!offerFile || uploadLoading}>
-              {uploadLoading ? 'Uploading...' : 'Upload'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Notes Modal */}
-      <Dialog open={showNotesModal} onOpenChange={setShowNotesModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Admin Notes</DialogTitle>
-            <DialogDescription>
-              Add or edit notes for this application
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <textarea
-              className="w-full h-40 p-3 border rounded-md"
-              value={adminNotes}
-              onChange={(e) => setAdminNotes(e.target.value)}
-              placeholder="Enter notes here..."
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowNotesModal(false)}>Cancel</Button>
-            <Button onClick={handleSaveNotes}>Save Notes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </AdminLayout>
-  );
-};
-
-export default Applications;
+            <
