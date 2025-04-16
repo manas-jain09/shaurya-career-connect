@@ -106,7 +106,6 @@ export interface JobApplication {
   student_id: string;
   status: JobApplicationStatus;
   admin_notes?: string;
-  offer_letter_url?: string;
   created_at?: string;
   updated_at?: string;
   job?: {

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
-import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, FileDown, GraduationCap, Award, BarChart3 } from 'lucide-react';
+import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, GraduationCap, Award, BarChart3 } from 'lucide-react';
 
 const statusDisplayConfig = {
   applied: {
@@ -198,18 +199,6 @@ const Applications = () => {
                         <p className="text-sm text-gray-500">Applied On</p>
                         <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
                       </div>
-                      
-                      {application.offer_letter_url && ['selected', 'internship', 'ppo', 'placement'].includes(application.status) && (
-                        <a 
-                          href={application.offer_letter_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center text-blue-600 hover:text-blue-800"
-                        >
-                          <FileDown className="h-4 w-4 mr-1" />
-                          <span>Download Offer Letter</span>
-                        </a>
-                      )}
                     </div>
                   </div>
                 </div>
