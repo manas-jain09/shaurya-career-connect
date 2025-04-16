@@ -7,6 +7,7 @@ import { useJobApplications } from '@/hooks/useJobApplications';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
 import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, FileDown, GraduationCap, Award } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const statusDisplayConfig = {
   applied: {
@@ -139,58 +140,60 @@ const Applications = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {applications.map((application) => (
-              <Card key={application.id} className="overflow-hidden">
-                <div className="flex flex-col md:flex-row">
-                  <div className="p-4 md:p-6 flex-grow">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold">{application.job?.title}</h3>
-                        <p className="text-gray-600">{application.job?.company_name}</p>
-                      </div>
-                      <div className="flex items-center mt-2 md:mt-0">
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDisplayConfig[application.status as JobApplicationStatus].color}`}>
-                          {statusDisplayConfig[application.status as JobApplicationStatus].icon}
-                          <span className="ml-1">{statusDisplayConfig[application.status as JobApplicationStatus].label}</span>
+          <ScrollArea className="w-full">
+            <div className="space-y-4 min-w-[800px] w-full pr-4">
+              {applications.map((application) => (
+                <Card key={application.id} className="overflow-hidden">
+                  <div className="flex flex-col md:flex-row">
+                    <div className="p-4 md:p-6 flex-grow">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold">{application.job?.title}</h3>
+                          <p className="text-gray-600">{application.job?.company_name}</p>
+                        </div>
+                        <div className="flex items-center mt-2 md:mt-0">
+                          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDisplayConfig[application.status as JobApplicationStatus].color}`}>
+                            {statusDisplayConfig[application.status as JobApplicationStatus].icon}
+                            <span className="ml-1">{statusDisplayConfig[application.status as JobApplicationStatus].label}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="mt-4 grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-500">Location</p>
-                        <p className="font-medium">{application.job?.location || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Package</p>
-                        <p className="font-medium">{application.job?.package || 'Not specified'}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 flex justify-between items-end">
-                      <div>
-                        <p className="text-sm text-gray-500">Applied On</p>
-                        <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
+                      
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Location</p>
+                          <p className="font-medium">{application.job?.location || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Package</p>
+                          <p className="font-medium">{application.job?.package || 'Not specified'}</p>
+                        </div>
                       </div>
                       
-                      {application.offer_letter_url && ['selected', 'internship', 'ppo'].includes(application.status) && (
-                        <a 
-                          href={application.offer_letter_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center text-blue-600 hover:text-blue-800"
-                        >
-                          <FileDown className="h-4 w-4 mr-1" />
-                          <span>Download Offer Letter</span>
-                        </a>
-                      )}
+                      <div className="mt-4 flex justify-between items-end">
+                        <div>
+                          <p className="text-sm text-gray-500">Applied On</p>
+                          <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
+                        </div>
+                        
+                        {application.offer_letter_url && ['selected', 'internship', 'ppo'].includes(application.status) && (
+                          <a 
+                            href={application.offer_letter_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-blue-600 hover:text-blue-800"
+                          >
+                            <FileDown className="h-4 w-4 mr-1" />
+                            <span>Download Offer Letter</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
         )}
       </div>
     </StudentLayout>

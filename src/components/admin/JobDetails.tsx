@@ -20,6 +20,7 @@ import {
 import { JobPosting, JobApplication, JobApplicationStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface JobDetailsProps {
   job: JobPosting;
@@ -230,43 +231,45 @@ const JobDetails: React.FC<JobDetailsProps> = ({ job, onEdit, onClose }) => {
           ) : (
             <>
               {applications.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {applications.map(app => (
-                        <tr key={app.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="font-medium">
-                              {app.student_profile?.first_name} {app.student_profile?.last_name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {app.student_profile?.phone}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getApplicationStatusBadge(app.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {app.created_at ? format(new Date(app.created_at), 'MMM dd, yyyy') : 'N/A'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <Button variant="link" size="sm" className="h-8 p-0">
-                              View Profile
-                            </Button>
-                          </td>
+                <ScrollArea className="h-[500px] rounded-lg border">
+                  <div className="w-full min-w-[800px]">
+                    <table className="w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Applied Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {applications.map(app => (
+                          <tr key={app.id}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="font-medium">
+                                {app.student_profile?.first_name} {app.student_profile?.last_name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {app.student_profile?.phone}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {getApplicationStatusBadge(app.status)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {app.created_at ? format(new Date(app.created_at), 'MMM dd, yyyy') : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <Button variant="link" size="sm" className="h-8 p-0">
+                                View Profile
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </ScrollArea>
               ) : (
                 <div className="text-center py-10 border rounded-md">
                   <Users size={40} className="mx-auto text-gray-300 mb-3" />
