@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -23,7 +24,8 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle
+  DialogTitle,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -31,7 +33,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
-import { Loader2, Search, FileDown, Filter } from 'lucide-react';
+import { Loader2, Search, FileDown, Filter, Users } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const statusColors: Record<JobApplicationStatus, string> = {
@@ -61,8 +63,11 @@ const Applications = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [showOptedOut, setShowOptedOut] = useState<boolean>(false);
+  const [optedOutStudents, setOptedOutStudents] = useState<any[]>([]);
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [optedOutDialogOpen, setOptedOutDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<JobApplicationStatus>('applied');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   
@@ -99,8 +104,37 @@ const Applications = () => {
     }
   };
   
+  const fetchOptedOutStudents = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('student_profiles')
+        .select(`
+          *,
+          graduation_details:id(course, passing_year, college_name)
+        `)
+        .not('placement_interest', 'eq', 'placement/internship');
+      
+      if (error) {
+        throw error;
+      }
+      
+      setOptedOutStudents(data || []);
+    } catch (error) {
+      console.error('Error fetching opted out students:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load opted out students',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   useEffect(() => {
     fetchApplications();
+    fetchOptedOutStudents();
   }, []);
   
   useEffect(() => {
@@ -135,9 +169,12 @@ const Applications = () => {
     try {
       setUpdatingStatus(true);
       
-      const shouldFreezeProfile = ['selected', 'internship', 'ppo', 'placement'].includes(newStatus) && 
-                                 !['selected', 'internship', 'ppo', 'placement'].includes(selectedApplication.status);
+      // Determine if we should freeze or unfreeze the profile
+      const shouldFreezeProfile = ['selected', 'internship', 'ppo', 'placement'].includes(newStatus);
+      const shouldUnfreezeProfile = ['applied', 'under_review', 'shortlisted', 'rejected'].includes(newStatus) && 
+                                   ['selected', 'internship', 'ppo', 'placement'].includes(selectedApplication.status);
       
+      // Update application status
       const { error } = await supabase
         .from('job_applications')
         .update({
@@ -148,7 +185,9 @@ const Applications = () => {
       
       if (error) throw error;
       
+      // Update freeze status based on new application status
       if (shouldFreezeProfile) {
+        console.log('Freezing profile');
         const { error: freezeError } = await supabase
           .from('student_profiles')
           .update({
@@ -159,11 +198,11 @@ const Applications = () => {
         
         if (freezeError) throw freezeError;
         
+        // Auto-reject other applications
         const { error: updateOtherAppsError } = await supabase
           .from('job_applications')
           .update({
             status: 'rejected',
-            admin_notes: `Automatically rejected because student was ${newStatus} for another position`,
             updated_at: new Date().toISOString()
           })
           .eq('student_id', selectedApplication.student_id)
@@ -173,6 +212,17 @@ const Applications = () => {
         if (updateOtherAppsError) {
           console.error('Error updating other applications:', updateOtherAppsError);
         }
+      } else if (shouldUnfreezeProfile) {
+        console.log('Unfreezing profile');
+        const { error: unfreezeError } = await supabase
+          .from('student_profiles')
+          .update({
+            is_frozen: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', selectedApplication.student_id);
+        
+        if (unfreezeError) throw unfreezeError;
       }
       
       toast({
@@ -203,8 +253,19 @@ const Applications = () => {
       'Location': app.job?.location,
       'Package': app.job?.package,
       'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
-      'Applied Date': new Date(app.created_at || '').toLocaleDateString(),
-      'Offer Letter': app.offer_letter_url || 'Not uploaded'
+      'Applied Date': new Date(app.created_at || '').toLocaleDateString()
+    }));
+  };
+
+  const getOptedOutCSVData = () => {
+    return optedOutStudents.map(student => ({
+      'Student Name': `${student.first_name} ${student.last_name}`,
+      'Phone': student.phone,
+      'Department': student.department || 'Not specified',
+      'Placement Interest': student.placement_interest || 'Not specified',
+      'Is Verified': student.is_verified ? 'Yes' : 'No',
+      'Course': student.graduation_details?.course || 'Not specified',
+      'Passing Year': student.graduation_details?.passing_year || 'Not specified'
     }));
   };
   
@@ -214,14 +275,25 @@ const Applications = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Job Applications</h1>
           
-          <CSVLink 
-            data={getCSVData()} 
-            filename={'job-applications.csv'} 
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            <FileDown className="mr-2 h-4 w-4" />
-            Export to CSV
-          </CSVLink>
+          <div className="flex space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setOptedOutDialogOpen(true)}
+              className="flex items-center"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              View Opted Out Students
+            </Button>
+            
+            <CSVLink 
+              data={getCSVData()} 
+              filename={'job-applications.csv'} 
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Export to CSV
+            </CSVLink>
+          </div>
         </div>
         
         <div className="flex flex-col md:flex-row gap-4">
@@ -273,14 +345,13 @@ const Applications = () => {
                   <TableHead>Company</TableHead>
                   <TableHead>Applied On</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Offer Letter</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredApplications.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                       No applications found
                     </TableCell>
                   </TableRow>
@@ -317,20 +388,6 @@ const Applications = () => {
                       <TableCell>
                         <StatusBadge status={application.status as JobApplicationStatus} />
                       </TableCell>
-                      <TableCell>
-                        {application.offer_letter_url ? (
-                          <a 
-                            href={application.offer_letter_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm flex items-center"
-                          >
-                            <FileDown className="mr-1 h-3 w-3" />View
-                          </a>
-                        ) : (
-                          <span className="text-gray-400 text-sm">Not uploaded</span>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
                         <Button 
                           variant="outline" 
@@ -349,10 +406,14 @@ const Applications = () => {
         )}
       </div>
       
+      {/* Update Status Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Update Application Status</DialogTitle>
+            <DialogDescription>
+              Changing to Selected, Internship, PPO, or Placement will freeze the student's profile and auto-reject other applications.
+            </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
@@ -431,6 +492,81 @@ const Applications = () => {
                 'Update Status'
               )}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Opted Out Students Dialog */}
+      <Dialog open={optedOutDialogOpen} onOpenChange={setOptedOutDialogOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Students Opted Out of Placements</DialogTitle>
+            <DialogDescription>
+              These students have not chosen "placement/internship" as their placement interest
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <div className="flex justify-end mb-4">
+              <CSVLink 
+                data={getOptedOutCSVData()} 
+                filename={'opted-out-students.csv'} 
+                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                Export to CSV
+              </CSVLink>
+            </div>
+            
+            <ScrollArea className="h-[60vh]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Placement Interest</TableHead>
+                    <TableHead>Course</TableHead>
+                    <TableHead>Passing Year</TableHead>
+                    <TableHead>Verification</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {optedOutStudents.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                        No students have opted out
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    optedOutStudents.map((student) => (
+                      <TableRow key={student.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{student.first_name} {student.last_name}</div>
+                            <div className="text-sm text-gray-500">{student.phone}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{student.department || 'Not specified'}</TableCell>
+                        <TableCell>{student.placement_interest || 'Not specified'}</TableCell>
+                        <TableCell>{student.graduation_details?.course || 'Not specified'}</TableCell>
+                        <TableCell>{student.graduation_details?.passing_year || 'Not specified'}</TableCell>
+                        <TableCell>
+                          {student.is_verified ? (
+                            <Badge variant="outline" className="bg-green-50 text-green-800 border-green-300">
+                              Verified
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300">
+                              Not Verified
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
           </div>
         </DialogContent>
       </Dialog>

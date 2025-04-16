@@ -27,6 +27,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
+  const [is_frozen, setIsFrozen] = useState<boolean>(false);
 
   // Use the provided profileId or get it from the user
   const studentProfileId = profileId || user?.profileId;
@@ -64,6 +65,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
                          !isBlocked;
       
       setIsEligibleForJobs(isEligible);
+      setIsFrozen(!!isFrozen);
       
       console.log('Eligibility check:', { isVerified, placementInterest, isFrozen, isBlocked, isEligible });
 
