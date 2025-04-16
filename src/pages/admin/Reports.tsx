@@ -78,40 +78,47 @@ const Reports = () => {
   const fetchStudentsData = async () => {
     setLoading(true);
     try {
-      // Fetch students with their profiles and graduation details
+      // First, fetch all student profiles
       const { data: studentsData, error: studentsError } = await supabase
         .from('student_profiles')
-        .select(`
-          *,
-          graduation:id(
-            course,
-            passing_year,
-            college_name,
-            marks,
-            is_cgpa
-          )
-        `);
+        .select('*');
 
       if (studentsError) throw studentsError;
+
+      // Then fetch graduation details separately
+      const { data: gradData, error: gradError } = await supabase
+        .from('graduation_details')
+        .select('*');
+
+      if (gradError) throw gradError;
+
+      // Map graduation data to student profiles
+      const studentsWithGraduation = studentsData.map(student => {
+        const gradDetails = gradData.find(g => g.student_id === student.id) || null;
+        return {
+          ...student,
+          graduation: gradDetails
+        };
+      });
 
       // Get unique courses and passing years for filters
       const allCourses = new Set<string>();
       const allPassingYears = new Set<number>();
       
-      studentsData?.forEach(student => {
-        if (student.graduation?.course) {
-          allCourses.add(student.graduation.course);
+      gradData.forEach(grad => {
+        if (grad.course) {
+          allCourses.add(grad.course);
         }
-        if (student.graduation?.passing_year) {
-          allPassingYears.add(student.graduation.passing_year);
+        if (grad.passing_year) {
+          allPassingYears.add(grad.passing_year);
         }
       });
       
       setCourses(Array.from(allCourses).sort());
       setPassingYears(Array.from(allPassingYears).sort());
       
-      setStudents(studentsData || []);
-      setFilteredStudents(studentsData || []);
+      setStudents(studentsWithGraduation || []);
+      setFilteredStudents(studentsWithGraduation || []);
     } catch (error) {
       console.error('Error fetching students data:', error);
       toast({
