@@ -2,16 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { JobPosting, JobApplication, JobPostingStatus, JobApplicationStatus } from '@/types/database.types';
+import { JobPosting, JobPostingStatus, JobApplicationStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
-import { Calendar, MapPin, Building, CheckCircle, XCircle, Search, AlertCircle, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import JobCard from '@/components/student/JobCard';
 
@@ -19,13 +16,10 @@ const JobsPage = () => {
   const { user } = useAuth();
   const { profile } = useStudentProfile();
   const [jobs, setJobs] = useState<JobPosting[]>([]);
-  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [eligibilityStatus, setEligibilityStatus] = useState<Record<string, boolean>>({});
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [applying, setApplying] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const jobsPerPage = 5;
   const [hasFlaggedSections, setHasFlaggedSections] = useState(false);
@@ -58,13 +52,8 @@ const JobsPage = () => {
         status: job.status as JobPostingStatus
       })) || [];
       
-      const typedApplications: JobApplication[] = applicationData?.map(app => ({
-        ...app,
-        status: app.status as JobApplicationStatus
-      })) || [];
-      
       setJobs(typedJobs);
-      setApplications(typedApplications);
+      setApplications(applicationData || []);
       
       // Check for flagged sections
       if (profile && profile.flagged_sections && profile.flagged_sections.length > 0) {
@@ -107,63 +96,9 @@ const JobsPage = () => {
       }
     } catch (error) {
       console.error('Error fetching jobs:', error);
-      toast('Failed to load job listings');
+      toast.error('Failed to load job listings');
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Handle job application
-  const handleApply = async () => {
-    if (!selectedJob || !profile) return;
-    
-    try {
-      setApplying(true);
-      
-      // Check if already applied
-      const isApplied = applications.some(app => app.job_id === selectedJob.id);
-      if (isApplied) {
-        toast.error('You have already applied for this job');
-        setOpenDialog(false);
-        return;
-      }
-      
-      // Check eligibility
-      const isEligible = eligibilityStatus[selectedJob.id || ''];
-      if (!isEligible) {
-        toast.error('You are not eligible for this job');
-        setOpenDialog(false);
-        return;
-      }
-      
-      // Create application
-      const { error } = await supabase
-        .from('job_applications')
-        .insert({
-          job_id: selectedJob.id,
-          student_id: profile.id,
-          status: 'applied'
-        });
-      
-      if (error) throw error;
-      
-      // Create notification for the student
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: user?.id || '',
-          title: 'Job Application Submitted',
-          message: `You have successfully applied for ${selectedJob.title} at ${selectedJob.company_name}.`
-        });
-      
-      toast.success('Job application submitted successfully');
-      fetchJobs(); // Refresh data
-      setOpenDialog(false);
-    } catch (error) {
-      console.error('Error applying for job:', error);
-      toast.error('Failed to submit application');
-    } finally {
-      setApplying(false);
     }
   };
 
@@ -188,21 +123,6 @@ const JobsPage = () => {
   const indexOfFirstJob = indexOfLastJob - jobsPerPage;
   const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
   const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  // Check if deadline is near (less than 5 days)
-  const isDeadlineNear = (deadline: string) => {
-    const deadlineDate = new Date(deadline);
-    const today = new Date();
-    const diffTime = deadlineDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 5 && diffDays > 0;
-  };
 
   useEffect(() => {
     if (profile) {
@@ -280,6 +200,7 @@ const JobsPage = () => {
                       isProfileVerified={!!profile?.is_verified}
                       isFlaggedProfile={hasFlaggedSections}
                       onApply={fetchJobs}
+                      isEligible={isEligible}
                     />
                   );
                 })}
@@ -332,65 +253,6 @@ const JobsPage = () => {
           </>
         )}
       </div>
-
-      {/* Apply Job Dialog */}
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Apply for {selectedJob?.title}</DialogTitle>
-            <DialogDescription>
-              You are about to apply for the position of {selectedJob?.title} at {selectedJob?.company_name}.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 my-4">
-            <div className="flex flex-col">
-              <span className="font-medium">Company:</span>
-              <span>{selectedJob?.company_name}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-medium">Location:</span>
-              <span>{selectedJob?.location}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-medium">Package:</span>
-              <span>{selectedJob?.package}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-medium">Application Deadline:</span>
-              <span>{selectedJob?.application_deadline ? formatDate(selectedJob.application_deadline) : ''}</span>
-            </div>
-            
-            <div className="bg-yellow-50 p-4 rounded-md">
-              <div className="flex items-start">
-                <AlertCircle className="text-yellow-500 mr-2 mt-0.5" size={18} />
-                <div>
-                  <p className="font-medium text-yellow-700">Important:</p>
-                  <p className="text-sm text-yellow-600">
-                    By applying, you confirm that all information in your profile is accurate and complete.
-                    Your application and details will be shared with the company.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setOpenDialog(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleApply}
-              disabled={applying}
-            >
-              {applying ? 'Submitting...' : 'Confirm Application'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </StudentLayout>
   );
 };

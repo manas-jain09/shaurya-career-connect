@@ -76,11 +76,17 @@ export const useJobApplications = (): JobApplicationData => {
         job: app.job
       })) || [];
       
+      console.log('Previous applications:', previousApplications);
+      console.log('Current applications:', typedApplications);
+      
       // Check for status changes and show notifications
       if (previousApplications.length > 0) {
         typedApplications.forEach(currentApp => {
           const prevApp = previousApplications.find(app => app.id === currentApp.id);
+          
           if (prevApp && prevApp.status !== currentApp.status) {
+            console.log('Status changed:', prevApp.status, '->', currentApp.status);
+            
             const jobTitle = currentApp.job?.title || 'a job';
             const companyName = currentApp.job?.company_name || 'a company';
             
@@ -158,6 +164,8 @@ export const useJobApplications = (): JobApplicationData => {
   useEffect(() => {
     if (!profile || !user) return;
     
+    console.log('Setting up real-time subscription for application updates');
+    
     const channel = supabase
       .channel('application-updates')
       .on(
@@ -169,13 +177,14 @@ export const useJobApplications = (): JobApplicationData => {
           filter: `student_id=eq.${profile.id}`
         },
         (payload) => {
-          console.log('Application updated:', payload);
+          console.log('Application updated via realtime:', payload);
           fetchApplications();
         }
       )
       .subscribe();
       
     return () => {
+      console.log('Removing channel subscription');
       supabase.removeChannel(channel);
     };
   }, [profile, user]);
