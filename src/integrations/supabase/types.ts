@@ -354,7 +354,6 @@ export type Database = {
           address: string | null
           agreed_to_policies: boolean | null
           created_at: string
-          department: string | null
           dob: string
           first_name: string
           flagged_sections: string[] | null
@@ -374,7 +373,6 @@ export type Database = {
           address?: string | null
           agreed_to_policies?: boolean | null
           created_at?: string
-          department?: string | null
           dob: string
           first_name: string
           flagged_sections?: string[] | null
@@ -394,7 +392,6 @@ export type Database = {
           address?: string | null
           agreed_to_policies?: boolean | null
           created_at?: string
-          department?: string | null
           dob?: string
           first_name?: string
           flagged_sections?: string[] | null
