@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Home, User, Briefcase, Bell, LogOut } from 'lucide-react';
+import { Home, User, Briefcase, Bell, LogOut, FileText } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 
 const StudentLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -14,6 +14,7 @@ const StudentLayout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     { name: 'Dashboard', path: '/student/dashboard', icon: Home },
     { name: 'My Profile', path: '/student/profile', icon: User },
     { name: 'Job Listings', path: '/student/jobs', icon: Briefcase },
+    { name: 'My Applications', path: '/student/applications', icon: FileText },
     { name: 'Notifications', path: '/student/notifications', icon: Bell, badge: unreadCount > 0 ? unreadCount : null },
   ];
 

@@ -15,6 +15,7 @@ import Reports from './pages/admin/Reports';
 import StudentDashboard from './pages/student/Dashboard';
 import Profile from './pages/student/Profile';
 import StudentJobs from './pages/student/Jobs';
+import StudentApplications from './pages/student/Applications';
 import Notifications from './pages/student/Notifications';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -81,6 +82,11 @@ function App() {
             <Route path="/student/jobs" element={
               <ProtectedRoute requiredRole="student">
                 <StudentJobs />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/applications" element={
+              <ProtectedRoute requiredRole="student">
+                <StudentApplications />
               </ProtectedRoute>
             } />
             <Route path="/student/notifications" element={
