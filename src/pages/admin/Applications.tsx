@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -42,7 +43,6 @@ const statusColors: Record<JobApplicationStatus, string> = {
   'selected': 'bg-purple-100 text-purple-800',
   'internship': 'bg-indigo-100 text-indigo-800',
   'ppo': 'bg-pink-100 text-pink-800',
-  'placement': 'bg-teal-100 text-teal-800'
 };
 
 const StatusBadge: React.FC<{ status: JobApplicationStatus }> = ({ status }) => {
@@ -304,7 +304,6 @@ const Applications = () => {
                 <SelectItem value="selected">Selected</SelectItem>
                 <SelectItem value="internship">Internship</SelectItem>
                 <SelectItem value="ppo">PPO</SelectItem>
-                <SelectItem value="placement">Placement</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -454,10 +453,6 @@ const Applications = () => {
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="ppo" id="ppo" />
                     <Label htmlFor="ppo">PPO</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="placement" id="placement" />
-                    <Label htmlFor="placement">Placement</Label>
                   </div>
                 </RadioGroup>
               </div>
