@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -846,4 +847,531 @@ const Reports = () => {
                 <FileSpreadsheet size={16} className="mr-2" /> Applications
               </TabsTrigger>
               <TabsTrigger value="jobs" className="flex items-center">
-                <Briefcase size={16} className="mr-2
+                <Briefcase size={16} className="mr-2" /> Jobs
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Students Tab Content */}
+            <TabsContent value="students">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Students Report</CardTitle>
+                    <div className="flex gap-2">
+                      <CSVLink 
+                        data={getStudentsCSVData()}
+                        filename={`students-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex"
+                      >
+                        <Button variant="outline" size="sm" className="flex items-center gap-1">
+                          <Download size={16} /> Export CSV
+                        </Button>
+                      </CSVLink>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Filters */}
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                      <h3 className="font-medium flex items-center gap-2"><Filter size={16} /> Filters</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 w-full">
+                            <Search className="h-4 w-4 text-gray-400" />
+                            <Input 
+                              type="search" 
+                              placeholder="Search students..." 
+                              value={studentSearch}
+                              onChange={(e) => setStudentSearch(e.target.value)}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Select value={studentVerificationFilter} onValueChange={setStudentVerificationFilter}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Verification Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="verified">Verified</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="flagged">Flagged</SelectItem>
+                              <SelectItem value="blocked">Blocked</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          {renderMultiSelect('Course', courses, studentCourseFilter, setStudentCourseFilter)}
+                        </div>
+                        <div>
+                          {renderMultiSelect('Passing Year', passingYears, studentPassingYearFilter, setStudentPassingYearFilter)}
+                        </div>
+                        <div>
+                          <Select value={studentSelectionFilter} onValueChange={setStudentSelectionFilter}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selection Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Students</SelectItem>
+                              <SelectItem value="selected">Selected Only</SelectItem>
+                              <SelectItem value="not_selected">Not Selected</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Table */}
+                    <ScrollArea className="border rounded-md">
+                      <div className="w-full overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-12">
+                                {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>Phone</TableHead>
+                              <TableHead>
+                                {renderSortButton('course', 'Course', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('passing_year', 'Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              </TableHead>
+                              <TableHead>Selected</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredStudents.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                  No students match the current filters
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredStudents.map((student) => (
+                                <TableRow key={student.id}>
+                                  <TableCell className="font-medium">
+                                    {student.first_name} {student.last_name}
+                                  </TableCell>
+                                  <TableCell>{student.phone}</TableCell>
+                                  <TableCell>{student.graduation?.course || 'N/A'}</TableCell>
+                                  <TableCell>{student.graduation?.passing_year || 'N/A'}</TableCell>
+                                  <TableCell>{student.graduation?.college_name || 'N/A'}</TableCell>
+                                  <TableCell>
+                                    {student.is_verified ? (
+                                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">Verified</Badge>
+                                    ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
+                                      <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Flagged</Badge>
+                                    ) : (
+                                      <Badge variant="default" className="bg-gray-500 hover:bg-gray-600">Pending</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {student.is_selected ? (
+                                      <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Selected</Badge>
+                                    ) : (
+                                      <Badge variant="outline">Not Selected</Badge>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Applications Tab Content */}
+            <TabsContent value="applications">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Applications Report</CardTitle>
+                    <div className="flex gap-2">
+                      <CSVLink 
+                        data={getApplicationsCSVData()}
+                        filename={`applications-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex"
+                      >
+                        <Button variant="outline" size="sm" className="flex items-center gap-1">
+                          <Download size={16} /> Export CSV
+                        </Button>
+                      </CSVLink>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Filters */}
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                      <h3 className="font-medium flex items-center gap-2"><Filter size={16} /> Filters</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 w-full">
+                            <Search className="h-4 w-4 text-gray-400" />
+                            <Input 
+                              type="search" 
+                              placeholder="Search applications..." 
+                              value={applicationSearch}
+                              onChange={(e) => setApplicationSearch(e.target.value)}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          {renderMultiSelect('Status', [
+                            'applied', 
+                            'under_review', 
+                            'shortlisted', 
+                            'rejected', 
+                            'selected', 
+                            'internship', 
+                            'ppo'
+                          ], applicationStatusFilter, setApplicationStatusFilter)}
+                        </div>
+                        <div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={`w-full md:w-[180px] justify-between ${applicationDateFilter ? 'text-foreground' : 'text-muted-foreground'}`}
+                              >
+                                {applicationDateFilter ? (
+                                  format(applicationDateFilter, "dd MMM yyyy")
+                                ) : (
+                                  "Select Date"
+                                )}
+                                <CalendarIcon className="ml-2 h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={applicationDateFilter}
+                                onSelect={setApplicationDateFilter}
+                                initialFocus
+                              />
+                              {applicationDateFilter && (
+                                <div className="p-2 border-t">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="w-full justify-center"
+                                    onClick={() => setApplicationDateFilter(undefined)}
+                                  >
+                                    Clear Date
+                                  </Button>
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div>
+                          {renderMultiSelect('Course', courses, applicationCourseFilter, setApplicationCourseFilter)}
+                        </div>
+                        <div>
+                          {renderMultiSelect('Passing Year', passingYears, applicationPassingYearFilter, setApplicationPassingYearFilter)}
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Package Range (LPA)</span>
+                              <span>{packageRange[0]} - {packageRange[1]}</span>
+                            </div>
+                            <Slider
+                              value={packageRange}
+                              min={minPackage}
+                              max={maxPackage}
+                              step={1}
+                              onValueChange={(value) => setPackageRange(value as [number, number])}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Table */}
+                    <ScrollArea className="border rounded-md">
+                      <div className="w-full overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>
+                                {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('job', 'Job', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('company', 'Company', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('date', 'Applied On', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredApplications.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                  No applications match the current filters
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredApplications.map((application) => (
+                                <TableRow key={application.id}>
+                                  <TableCell className="font-medium">
+                                    {application.student_profile?.first_name} {application.student_profile?.last_name}
+                                  </TableCell>
+                                  <TableCell>{application.job?.title || 'N/A'}</TableCell>
+                                  <TableCell>{application.job?.company_name || 'N/A'}</TableCell>
+                                  <TableCell>
+                                    {application.created_at ? 
+                                      new Date(application.created_at).toLocaleDateString() : 
+                                      'N/A'
+                                    }
+                                  </TableCell>
+                                  <TableCell>
+                                    {application.status === 'applied' && (
+                                      <Badge variant="default" className="bg-gray-500 hover:bg-gray-600">Applied</Badge>
+                                    )}
+                                    {application.status === 'under_review' && (
+                                      <Badge variant="default" className="bg-blue-500 hover:bg-blue-600">Under Review</Badge>
+                                    )}
+                                    {application.status === 'shortlisted' && (
+                                      <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Shortlisted</Badge>
+                                    )}
+                                    {application.status === 'rejected' && (
+                                      <Badge variant="default" className="bg-red-500 hover:bg-red-600">Rejected</Badge>
+                                    )}
+                                    {application.status === 'selected' && (
+                                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">Selected</Badge>
+                                    )}
+                                    {application.status === 'internship' && (
+                                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">Internship</Badge>
+                                    )}
+                                    {application.status === 'ppo' && (
+                                      <Badge variant="default" className="bg-purple-500 hover:bg-purple-600">PPO</Badge>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>{application.job?.package || 'N/A'}</TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Jobs Tab Content */}
+            <TabsContent value="jobs">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Jobs Report</CardTitle>
+                    <div className="flex gap-2">
+                      <CSVLink 
+                        data={getJobsCSVData()}
+                        filename={`jobs-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex"
+                      >
+                        <Button variant="outline" size="sm" className="flex items-center gap-1">
+                          <Download size={16} /> Export CSV
+                        </Button>
+                      </CSVLink>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Filters */}
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                      <h3 className="font-medium flex items-center gap-2"><Filter size={16} /> Filters</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 w-full">
+                            <Search className="h-4 w-4 text-gray-400" />
+                            <Input 
+                              type="search" 
+                              placeholder="Search jobs..." 
+                              value={jobSearch}
+                              onChange={(e) => setJobSearch(e.target.value)}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          {renderMultiSelect('Status', [
+                            'active', 
+                            'closed', 
+                            'draft'
+                          ], jobStatusFilter, setJobStatusFilter)}
+                        </div>
+                        <div>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={`w-full md:w-[180px] justify-between ${jobDeadlineFilter ? 'text-foreground' : 'text-muted-foreground'}`}
+                              >
+                                {jobDeadlineFilter ? (
+                                  format(jobDeadlineFilter, "dd MMM yyyy")
+                                ) : (
+                                  "Deadline Date"
+                                )}
+                                <CalendarIcon className="ml-2 h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={jobDeadlineFilter}
+                                onSelect={setJobDeadlineFilter}
+                                initialFocus
+                              />
+                              {jobDeadlineFilter && (
+                                <div className="p-2 border-t">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="w-full justify-center"
+                                    onClick={() => setJobDeadlineFilter(undefined)}
+                                  >
+                                    Clear Date
+                                  </Button>
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        <div>
+                          {renderMultiSelect('Location', locations, jobLocationFilter, setJobLocationFilter)}
+                        </div>
+                        <div className="md:col-span-2">
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span>Selected Students Count</span>
+                              <span>{selectedStudentsFilter[0]} - {selectedStudentsFilter[1]}</span>
+                            </div>
+                            <Slider
+                              value={selectedStudentsFilter}
+                              min={0}
+                              max={maxSelectedStudents}
+                              step={1}
+                              onValueChange={(value) => setSelectedStudentsFilter(value as [number, number])}
+                              className="w-full"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Table */}
+                    <ScrollArea className="border rounded-md">
+                      <div className="w-full overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>
+                                {renderSortButton('title', 'Job Title', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('company', 'Company', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('package', 'Package', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('location', 'Location', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('deadline', 'Deadline', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('applications', 'Applications', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('selected', 'Selected', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                              <TableHead>
+                                {renderSortButton('status', 'Status', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredJobs.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                                  No jobs match the current filters
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredJobs.map((job) => (
+                                <TableRow key={job.id}>
+                                  <TableCell className="font-medium">{job.title}</TableCell>
+                                  <TableCell>{job.company_name}</TableCell>
+                                  <TableCell>{job.package}</TableCell>
+                                  <TableCell>{job.location}</TableCell>
+                                  <TableCell>
+                                    {job.application_deadline ? 
+                                      new Date(job.application_deadline).toLocaleDateString() : 
+                                      'N/A'
+                                    }
+                                  </TableCell>
+                                  <TableCell>{job.application_count}</TableCell>
+                                  <TableCell>{job.selected_count}</TableCell>
+                                  <TableCell>
+                                    {job.status === 'active' && (
+                                      <Badge variant="default" className="bg-green-500 hover:bg-green-600">Active</Badge>
+                                    )}
+                                    {job.status === 'closed' && (
+                                      <Badge variant="default" className="bg-gray-500 hover:bg-gray-600">Closed</Badge>
+                                    )}
+                                    {job.status === 'draft' && (
+                                      <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">Draft</Badge>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default Reports;
