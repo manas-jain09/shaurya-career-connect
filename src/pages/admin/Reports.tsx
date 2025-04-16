@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, type ChangeEvent } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,9 +60,11 @@ const Reports = () => {
   const [studentVerificationFilter, setStudentVerificationFilter] = useState('all');
   const [studentCourseFilter, setStudentCourseFilter] = useState<string[]>([]);
   const [studentPassingYearFilter, setStudentPassingYearFilter] = useState<string[]>([]);
+  const [studentDepartmentFilter, setStudentDepartmentFilter] = useState<string[]>([]);
   const [studentSelectionFilter, setStudentSelectionFilter] = useState('all');
   const [courses, setCourses] = useState<string[]>([]);
   const [passingYears, setPassingYears] = useState<number[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
   const [studentSortField, setStudentSortField] = useState<string>('name');
   const [studentSortDirection, setStudentSortDirection] = useState<'asc' | 'desc'>('asc');
   
@@ -74,6 +76,7 @@ const Reports = () => {
   const [applicationDateFilter, setApplicationDateFilter] = useState<Date | undefined>(undefined);
   const [applicationCourseFilter, setApplicationCourseFilter] = useState<string[]>([]);
   const [applicationPassingYearFilter, setApplicationPassingYearFilter] = useState<string[]>([]);
+  const [applicationDepartmentFilter, setApplicationDepartmentFilter] = useState<string[]>([]);
   const [minPackage, setMinPackage] = useState<number>(0);
   const [maxPackage, setMaxPackage] = useState<number>(100);
   const [packageRange, setPackageRange] = useState<[number, number]>([0, 100]);
@@ -144,9 +147,10 @@ const Reports = () => {
         };
       });
 
-      // Get unique courses and passing years for filters
+      // Get unique courses, passing years, and departments for filters
       const allCourses = new Set<string>();
       const allPassingYears = new Set<number>();
+      const allDepartments = new Set<string>();
       
       gradData.forEach(grad => {
         if (grad.course) {
@@ -157,8 +161,15 @@ const Reports = () => {
         }
       });
       
+      studentsData.forEach(student => {
+        if (student.department) {
+          allDepartments.add(student.department);
+        }
+      });
+      
       setCourses(Array.from(allCourses).sort());
       setPassingYears(Array.from(allPassingYears).sort());
+      setDepartments(Array.from(allDepartments).sort());
       
       setStudents(studentsWithGraduation || []);
       setFilteredStudents(studentsWithGraduation || []);
@@ -210,7 +221,6 @@ const Reports = () => {
         const studentProfile = studentProfiles.find(p => p.id === app.student_id) || null;
         const gradDetails = gradData.find(g => g.student_id === app.student_id) || null;
         
-        // Ensure the full data structure matches JobApplication type
         return {
           ...app,
           student_profile: studentProfile,
@@ -218,9 +228,10 @@ const Reports = () => {
         } as JobApplication;
       });
       
-      // Extract unique courses and passing years
+      // Extract unique courses, passing years, and departments
       const allCourses = new Set<string>();
       const allPassingYears = new Set<number>();
+      const allDepartments = new Set<string>();
       
       fullApplicationsData.forEach(app => {
         if (app.graduation_details?.course) {
@@ -228,6 +239,9 @@ const Reports = () => {
         }
         if (app.graduation_details?.passing_year) {
           allPassingYears.add(app.graduation_details.passing_year);
+        }
+        if (app.student_profile?.department) {
+          allDepartments.add(app.student_profile.department);
         }
       });
       
@@ -247,6 +261,7 @@ const Reports = () => {
       
       setCourses(Array.from(allCourses).sort());
       setPassingYears(Array.from(allPassingYears).sort());
+      setDepartments(Array.from(allDepartments).sort());
       
       setApplications(fullApplicationsData);
       setFilteredApplications(fullApplicationsData);
@@ -504,6 +519,13 @@ const Reports = () => {
       );
     }
     
+    // Filter by department
+    if (studentDepartmentFilter.length > 0) {
+      filtered = filtered.filter(student => 
+        student.department && studentDepartmentFilter.includes(student.department)
+      );
+    }
+    
     // Filter by selection status
     if (studentSelectionFilter !== 'all') {
       filtered = filtered.filter(student => {
@@ -524,7 +546,8 @@ const Reports = () => {
     studentSearch, 
     studentVerificationFilter, 
     studentCourseFilter, 
-    studentPassingYearFilter,
+    studentPassingYearFilter, 
+    studentDepartmentFilter,
     studentSelectionFilter,
     studentSortField,
     studentSortDirection,
@@ -581,6 +604,14 @@ const Reports = () => {
       );
     }
     
+    // Filter by department
+    if (applicationDepartmentFilter.length > 0) {
+      filtered = filtered.filter(app => 
+        app.student_profile?.department && 
+        applicationDepartmentFilter.includes(app.student_profile.department)
+      );
+    }
+    
     // Filter by package range
     filtered = filtered.filter(app => {
       const packageValue = parseFloat((app.job?.package || '0').replace(/[^\d.]/g, '')) || 0;
@@ -597,6 +628,7 @@ const Reports = () => {
     applicationDateFilter, 
     applicationCourseFilter,
     applicationPassingYearFilter,
+    applicationDepartmentFilter,
     packageRange,
     applicationSortField,
     applicationSortDirection,
@@ -742,6 +774,7 @@ const Reports = () => {
       'Name': `${student.first_name} ${student.last_name}`,
       'Phone': student.phone,
       'Email': student.email,
+      'Department': student.department || 'N/A',
       'College': student.graduation?.college_name || 'N/A',
       'Course': student.graduation?.course || 'N/A',
       'Passing Year': student.graduation?.passing_year || 'N/A',
@@ -759,6 +792,7 @@ const Reports = () => {
     return filteredApplications.map(app => ({
       'Student Name': `${app.student_profile?.first_name} ${app.student_profile?.last_name}`,
       'Phone': app.student_profile?.phone || 'N/A',
+      'Department': app.student_profile?.department || 'N/A',
       'Course': app.graduation_details?.course || 'N/A',
       'Passing Year': app.graduation_details?.passing_year || 'N/A',
       'Job Title': app.job?.title || 'N/A',
@@ -790,16 +824,6 @@ const Reports = () => {
     }));
   };
 
-  // Handles Slider onValueChange prop to fix type issues
-  const handlePackageRangeChange = (value: number[]) => {
-    setPackageRange([value[0], value[1]] as [number, number]);
-  };
-
-  // Handles Slider onValueChange prop to fix type issues for students filter
-  const handleSelectedStudentsChange = (value: number[]) => {
-    setSelectedStudentsFilter([value[0], value[1]] as [number, number]);
-  };
-
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -815,104 +839,86 @@ const Reports = () => {
         ) : (
           <Tabs defaultValue={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="students" className="flex items-center gap-2">
-                <Users className="h-4 w-4" /> Students
+              <TabsTrigger value="students" className="flex items-center">
+                <Users size={16} className="mr-2" /> Students
               </TabsTrigger>
-              <TabsTrigger value="applications" className="flex items-center gap-2">
-                <FileSpreadsheet className="h-4 w-4" /> Applications
+              <TabsTrigger value="applications" className="flex items-center">
+                <FileSpreadsheet size={16} className="mr-2" /> Applications
               </TabsTrigger>
-              <TabsTrigger value="jobs" className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4" /> Jobs
+              <TabsTrigger value="jobs" className="flex items-center">
+                <Briefcase size={16} className="mr-2" /> Jobs
               </TabsTrigger>
             </TabsList>
-
+            
             {/* Students Tab Content */}
-            <TabsContent value="students">
+            <TabsContent value="students" className="space-y-4">
+              {/* Students filters and table content */}
               <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">Students Report</CardTitle>
-                    <CSVLink 
-                      data={getStudentsCSVData()}
-                      filename={`students-report-${new Date().toISOString().split('T')[0]}.csv`}
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                    >
-                      <Download className="mr-2 h-4 w-4" /> Export CSV
-                    </CSVLink>
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Students Data</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CSVLink 
+                        data={getStudentsCSVData()}
+                        filename={`students-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+                      >
+                        <Download size={16} /> Export CSV
+                      </CSVLink>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Filters */}
-                    <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
-                      <div className="flex-1 min-w-[250px]">
+                    <div className="flex flex-col md:flex-row gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
                         <Input
-                          placeholder="Search by name, phone, college..."
+                          placeholder="Search students..."
                           value={studentSearch}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStudentSearch(e.target.value)}
+                          onChange={(e) => setStudentSearch(e.target.value)}
                           className="w-full"
+                          icon={<Search className="h-4 w-4" />}
                         />
                       </div>
-                      <Select 
-                        value={studentVerificationFilter} 
-                        onValueChange={setStudentVerificationFilter}
-                      >
-                        <SelectTrigger className="w-full md:w-[180px]">
-                          <SelectValue placeholder="Verification Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Students</SelectItem>
-                          <SelectItem value="verified">Verified</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="flagged">Flagged</SelectItem>
-                          <SelectItem value="blocked">Blocked</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {renderMultiSelect(
-                        "Course", 
-                        courses, 
-                        studentCourseFilter, 
-                        setStudentCourseFilter
-                      )}
-                      {renderMultiSelect(
-                        "Passing Year", 
-                        passingYears, 
-                        studentPassingYearFilter,
-                        setStudentPassingYearFilter
-                      )}
-                      <Select 
-                        value={studentSelectionFilter} 
-                        onValueChange={setStudentSelectionFilter}
-                      >
-                        <SelectTrigger className="w-full md:w-[180px]">
-                          <SelectValue placeholder="Selection Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Students</SelectItem>
-                          <SelectItem value="selected">Selected</SelectItem>
-                          <SelectItem value="not_selected">Not Selected</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div>
+                        <Select value={studentVerificationFilter} onValueChange={setStudentVerificationFilter}>
+                          <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectValue placeholder="Verification" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Verification</SelectItem>
+                            <SelectItem value="verified">Verified</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="flagged">Flagged</SelectItem>
+                            <SelectItem value="blocked">Blocked</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {renderMultiSelect('Course', courses, studentCourseFilter, setStudentCourseFilter)}
+                      {renderMultiSelect('Passing Year', passingYears, studentPassingYearFilter, setStudentPassingYearFilter)}
+                      {renderMultiSelect('Department', departments, studentDepartmentFilter, setStudentDepartmentFilter)}
+                      <div>
+                        <Select value={studentSelectionFilter} onValueChange={setStudentSelectionFilter}>
+                          <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectValue placeholder="Selection Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Students</SelectItem>
+                            <SelectItem value="selected">Selected</SelectItem>
+                            <SelectItem value="not_selected">Not Selected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
-                    {/* Results count */}
-                    <div className="text-sm text-gray-500">
-                      Showing {filteredStudents.length} of {students.length} students
-                    </div>
-
-                    {/* Table */}
-                    <div className="border rounded-md">
+                    <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>
-                              {renderSortButton('name', 'Student Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                              {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
                             </TableHead>
-                            <TableHead>
-                              <div className="flex items-center gap-1">
-                                Status
-                              </div>
-                            </TableHead>
+                            <TableHead>Phone</TableHead>
                             <TableHead>
                               {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
                             </TableHead>
@@ -923,49 +929,53 @@ const Reports = () => {
                               {renderSortButton('passing_year', 'Passing Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
                             </TableHead>
                             <TableHead>
-                              <div className="flex items-center gap-1">
-                                Selection
-                              </div>
+                              {renderSortButton('department', 'Department', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
                             </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>Selection</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredStudents.map((student) => (
-                            <TableRow key={student.id}>
-                              <TableCell className="font-medium">
-                                <div className="flex flex-col">
-                                  <span>{student.first_name} {student.last_name}</span>
-                                  <span className="text-sm text-gray-500">{student.phone}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={student.is_verified ? "default" : student.flagged_sections?.length ? "destructive" : "secondary"}>
-                                  {student.is_verified ? "Verified" : student.flagged_sections?.length ? "Flagged" : "Pending"}
-                                </Badge>
-                                {student.is_blocked && (
-                                  <Badge variant="outline" className="ml-2 border-red-500 text-red-500">
-                                    Blocked
-                                  </Badge>
-                                )}
-                              </TableCell>
-                              <TableCell>{student.graduation?.college_name || "N/A"}</TableCell>
-                              <TableCell>{student.graduation?.course || "N/A"}</TableCell>
-                              <TableCell>{student.graduation?.passing_year || "N/A"}</TableCell>
-                              <TableCell>
-                                {student.is_selected ? (
-                                  <Badge variant="success" className="bg-green-500">Selected</Badge>
-                                ) : (
-                                  <span className="text-gray-500">-</span>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {filteredStudents.length === 0 && (
+                          {filteredStudents.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                              <TableCell colSpan={8} className="text-center py-4">
                                 No students match the filter criteria
                               </TableCell>
                             </TableRow>
+                          ) : (
+                            filteredStudents.map((student) => (
+                              <TableRow key={student.id}>
+                                <TableCell className="font-medium">
+                                  {student.first_name} {student.last_name}
+                                </TableCell>
+                                <TableCell>{student.phone}</TableCell>
+                                <TableCell>{student.graduation?.college_name || 'N/A'}</TableCell>
+                                <TableCell>{student.graduation?.course || 'N/A'}</TableCell>
+                                <TableCell>{student.graduation?.passing_year || 'N/A'}</TableCell>
+                                <TableCell>{student.department || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {student.is_verified ? (
+                                    <Badge className="bg-green-500">Verified</Badge>
+                                  ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
+                                    <Badge className="bg-yellow-500">Flagged</Badge>
+                                  ) : (
+                                    <Badge className="bg-blue-500">Pending</Badge>
+                                  )}
+                                  {student.is_blocked && (
+                                    <Badge className="ml-1 bg-red-500">Blocked</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {student.is_selected ? (
+                                    <Badge className="bg-green-500">Selected</Badge>
+                                  ) : (
+                                    <Badge variant="outline">Not Selected</Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
                           )}
                         </TableBody>
                       </Table>
@@ -974,38 +984,40 @@ const Reports = () => {
                 </CardContent>
               </Card>
             </TabsContent>
-
+            
             {/* Applications Tab Content */}
-            <TabsContent value="applications">
+            <TabsContent value="applications" className="space-y-4">
               <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">Applications Report</CardTitle>
-                    <CSVLink 
-                      data={getApplicationsCSVData()}
-                      filename={`applications-report-${new Date().toISOString().split('T')[0]}.csv`}
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                    >
-                      <Download className="mr-2 h-4 w-4" /> Export CSV
-                    </CSVLink>
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Applications Data</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CSVLink 
+                        data={getApplicationsCSVData()}
+                        filename={`applications-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+                      >
+                        <Download size={16} /> Export CSV
+                      </CSVLink>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Filters */}
-                    <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
-                      <div className="flex-1 min-w-[250px]">
+                    <div className="flex flex-col md:flex-row gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
                         <Input
-                          placeholder="Search by student name, job title..."
+                          placeholder="Search applications..."
                           value={applicationSearch}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApplicationSearch(e.target.value)}
+                          onChange={(e) => setApplicationSearch(e.target.value)}
                           className="w-full"
+                          icon={<Search className="h-4 w-4" />}
                         />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" className="w-full md:w-[180px] justify-between">
-                            <span className="truncate">Status</span>
+                            <span>Status</span>
                             {applicationStatusFilter.length > 0 && (
                               <Badge className="ml-2 bg-primary text-primary-foreground">
                                 {applicationStatusFilter.length}
@@ -1024,41 +1036,101 @@ const Reports = () => {
                             Clear all
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          {[
-                            'applied', 
-                            'under_review', 
-                            'shortlisted', 
-                            'rejected', 
-                            'selected', 
-                            'internship', 
-                            'ppo'
-                          ].map((status) => (
-                            <DropdownMenuCheckboxItem
-                              key={status}
-                              checked={applicationStatusFilter.includes(status)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setApplicationStatusFilter([...applicationStatusFilter, status]);
-                                } else {
-                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== status));
-                                }
-                              }}
-                            >
-                              {status === 'ppo' 
-                                ? 'PPO' 
-                                : status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                            </DropdownMenuCheckboxItem>
-                          ))}
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('applied')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'applied']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'applied'));
+                              }
+                            }}
+                          >
+                            Applied
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('under_review')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'under_review']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'under_review'));
+                              }
+                            }}
+                          >
+                            Under Review
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('shortlisted')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'shortlisted']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'shortlisted'));
+                              }
+                            }}
+                          >
+                            Shortlisted
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('rejected')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'rejected']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'rejected'));
+                              }
+                            }}
+                          >
+                            Rejected
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('selected')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'selected']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'selected'));
+                              }
+                            }}
+                          >
+                            Selected
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('internship')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'internship']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'internship'));
+                              }
+                            }}
+                          >
+                            Internship
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('ppo')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'ppo']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'ppo'));
+                              }
+                            }}
+                          >
+                            PPO
+                          </DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className={`w-full md:w-[180px] justify-between ${applicationDateFilter ? 'text-foreground' : 'text-muted-foreground'}`}
+                            className={`w-full md:w-[180px] justify-start text-left font-normal ${!applicationDateFilter && "text-muted-foreground"}`}
                           >
-                            <span>Application Date</span>
-                            <CalendarIcon className="ml-2 h-4 w-4" />
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {applicationDateFilter ? format(applicationDateFilter, "PPP") : <span>Application Date</span>}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
@@ -1069,109 +1141,47 @@ const Reports = () => {
                             initialFocus
                           />
                           {applicationDateFilter && (
-                            <div className="p-3 border-t border-border">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <div className="p-3 border-t flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => setApplicationDateFilter(undefined)}
-                                className="w-full"
                               >
-                                Clear date
+                                Clear
                               </Button>
                             </div>
                           )}
                         </PopoverContent>
                       </Popover>
-                      {renderMultiSelect(
-                        "Course", 
-                        courses, 
-                        applicationCourseFilter, 
-                        setApplicationCourseFilter
-                      )}
-                      {renderMultiSelect(
-                        "Passing Year", 
-                        passingYears, 
-                        applicationPassingYearFilter, 
-                        setApplicationPassingYearFilter
-                      )}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full md:w-[180px] justify-between">
-                            <span>Package (LPA)</span>
-                            <SlidersHorizontal className="ml-2 h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[220px] p-4">
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Min: ₹{packageRange[0]} LPA</span>
-                                <span>Max: ₹{packageRange[1]} LPA</span>
-                              </div>
-                              <Slider
-                                min={minPackage}
-                                max={maxPackage}
-                                step={1}
-                                value={[packageRange[0], packageRange[1]]}
-                                onValueChange={handlePackageRangeChange}
-                                className="[&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
-                              />
-                            </div>
-                            <div className="flex justify-between gap-2">
-                              <Input 
-                                type="number" 
-                                value={packageRange[0]} 
-                                onChange={(e) => {
-                                  const value = parseInt(e.target.value);
-                                  if (!isNaN(value) && value <= packageRange[1]) {
-                                    setPackageRange([value, packageRange[1]]);
-                                  }
-                                }}
-                                className="w-20 h-8"
-                                min={minPackage}
-                                max={packageRange[1]}
-                              />
-                              <span className="flex items-center">to</span>
-                              <Input 
-                                type="number" 
-                                value={packageRange[1]} 
-                                onChange={(e) => {
-                                  const value = parseInt(e.target.value);
-                                  if (!isNaN(value) && value >= packageRange[0]) {
-                                    setPackageRange([packageRange[0], value]);
-                                  }
-                                }}
-                                className="w-20 h-8"
-                                min={packageRange[0]}
-                                max={maxPackage}
-                              />
-                            </div>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setPackageRange([minPackage, maxPackage])}
-                              className="w-full"
-                            >
-                              Reset
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      
+                      {renderMultiSelect('Course', courses, applicationCourseFilter, setApplicationCourseFilter)}
+                      {renderMultiSelect('Passing Year', passingYears, applicationPassingYearFilter, setApplicationPassingYearFilter)}
+                      {renderMultiSelect('Department', departments, applicationDepartmentFilter, setApplicationDepartmentFilter)}
+                      
+                      <div className="w-full md:w-[280px]">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-sm">Package Range: {packageRange[0]} - {packageRange[1]} LPA</span>
+                        </div>
+                        <Slider
+                          defaultValue={[minPackage, maxPackage]}
+                          value={packageRange}
+                          onValueChange={setPackageRange}
+                          min={minPackage}
+                          max={maxPackage}
+                          step={1}
+                          className="mb-3"
+                        />
+                      </div>
                     </div>
 
-                    {/* Results count */}
-                    <div className="text-sm text-gray-500">
-                      Showing {filteredApplications.length} of {applications.length} applications
-                    </div>
-
-                    {/* Table */}
-                    <div className="border rounded-md">
+                    <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>
                               {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
                             </TableHead>
+                            <TableHead>Details</TableHead>
                             <TableHead>
                               {renderSortButton('job', 'Job', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
                             </TableHead>
@@ -1182,70 +1192,50 @@ const Reports = () => {
                               {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
                             </TableHead>
                             <TableHead>
-                              {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              {renderSortButton('date', 'Date', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
                             </TableHead>
                             <TableHead>
-                              {renderSortButton('date', 'Applied On', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                              {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
                             </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredApplications.map((app) => (
-                            <TableRow key={app.id}>
-                              <TableCell className="font-medium">
-                                <div className="flex flex-col">
-                                  <span>{app.student_profile?.first_name} {app.student_profile?.last_name}</span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-500">{app.student_profile?.phone}</span>
-                                    {app.student_profile?.is_verified ? (
-                                      <Badge variant="outline" className="h-5 text-xs border-green-500 text-green-500">Verified</Badge>
-                                    ) : null}
-                                  </div>
-                                  <span className="text-xs text-gray-500">
-                                    {app.graduation_details?.course}, {app.graduation_details?.passing_year}
-                                  </span>
-                                </div>
-                              </TableCell>
-                              <TableCell>{app.job?.title || "N/A"}</TableCell>
-                              <TableCell>{app.job?.company_name || "N/A"}</TableCell>
-                              <TableCell>{app.job?.package || "N/A"}</TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={
-                                    app.status === 'selected' || app.status === 'internship' || app.status === 'ppo'
-                                      ? "success" 
-                                      : app.status === 'rejected'
-                                      ? "destructive"
-                                      : "default"
-                                  }
-                                  className={
-                                    app.status === 'selected' || app.status === 'internship' || app.status === 'ppo'
-                                      ? "bg-green-500" 
-                                      : app.status === 'rejected'
-                                      ? "bg-red-500"
-                                      : ""
-                                  }
-                                >
-                                  {app.status === 'ppo' 
-                                    ? 'PPO' 
-                                    : app.status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {app.created_at ? (
-                                  format(new Date(app.created_at), 'dd MMM yyyy')
-                                ) : (
-                                  "N/A"
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {filteredApplications.length === 0 && (
+                          {filteredApplications.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                              <TableCell colSpan={7} className="text-center py-4">
                                 No applications match the filter criteria
                               </TableCell>
                             </TableRow>
+                          ) : (
+                            filteredApplications.map((app) => (
+                              <TableRow key={app.id}>
+                                <TableCell className="font-medium">
+                                  {app.student_profile ? `${app.student_profile.first_name} ${app.student_profile.last_name}` : 'Unknown'}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    <div>Course: {app.graduation_details?.course || 'N/A'}</div>
+                                    <div>Year: {app.graduation_details?.passing_year || 'N/A'}</div>
+                                    <div>Dept: {app.student_profile?.department || 'N/A'}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{app.job?.title || 'N/A'}</TableCell>
+                                <TableCell>{app.job?.company_name || 'N/A'}</TableCell>
+                                <TableCell>{app.job?.package || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {app.created_at ? format(new Date(app.created_at), 'MMM dd, yyyy') : 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {app.status === 'applied' && <Badge className="bg-blue-500">Applied</Badge>}
+                                  {app.status === 'under_review' && <Badge className="bg-purple-500">Under Review</Badge>}
+                                  {app.status === 'shortlisted' && <Badge className="bg-yellow-500">Shortlisted</Badge>}
+                                  {app.status === 'rejected' && <Badge className="bg-red-500">Rejected</Badge>}
+                                  {app.status === 'selected' && <Badge className="bg-green-500">Selected</Badge>}
+                                  {app.status === 'internship' && <Badge className="bg-teal-500">Internship</Badge>}
+                                  {app.status === 'ppo' && <Badge className="bg-indigo-500">PPO</Badge>}
+                                </TableCell>
+                              </TableRow>
+                            ))
                           )}
                         </TableBody>
                       </Table>
@@ -1254,38 +1244,40 @@ const Reports = () => {
                 </CardContent>
               </Card>
             </TabsContent>
-
+            
             {/* Jobs Tab Content */}
-            <TabsContent value="jobs">
+            <TabsContent value="jobs" className="space-y-4">
               <Card>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">Jobs Report</CardTitle>
-                    <CSVLink 
-                      data={getJobsCSVData()}
-                      filename={`jobs-report-${new Date().toISOString().split('T')[0]}.csv`}
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                    >
-                      <Download className="mr-2 h-4 w-4" /> Export CSV
-                    </CSVLink>
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Jobs Data</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CSVLink 
+                        data={getJobsCSVData()}
+                        filename={`jobs-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+                      >
+                        <Download size={16} /> Export CSV
+                      </CSVLink>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Filters */}
-                    <div className="flex flex-col gap-4 md:flex-row md:flex-wrap">
-                      <div className="flex-1 min-w-[250px]">
+                    <div className="flex flex-col md:flex-row gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
                         <Input
-                          placeholder="Search by job title, company..."
+                          placeholder="Search jobs..."
                           value={jobSearch}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setJobSearch(e.target.value)}
+                          onChange={(e) => setJobSearch(e.target.value)}
                           className="w-full"
+                          icon={<Search className="h-4 w-4" />}
                         />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" className="w-full md:w-[180px] justify-between">
-                            <span className="truncate">Status</span>
+                            <span>Status</span>
                             {jobStatusFilter.length > 0 && (
                               <Badge className="ml-2 bg-primary text-primary-foreground">
                                 {jobStatusFilter.length}
@@ -1304,31 +1296,53 @@ const Reports = () => {
                             Clear all
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          {['active', 'closed', 'draft'].map((status) => (
-                            <DropdownMenuCheckboxItem
-                              key={status}
-                              checked={jobStatusFilter.includes(status)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setJobStatusFilter([...jobStatusFilter, status]);
-                                } else {
-                                  setJobStatusFilter(jobStatusFilter.filter(s => s !== status));
-                                }
-                              }}
-                            >
-                              {status.charAt(0).toUpperCase() + status.slice(1)}
-                            </DropdownMenuCheckboxItem>
-                          ))}
+                          <DropdownMenuCheckboxItem
+                            checked={jobStatusFilter.includes('active')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setJobStatusFilter([...jobStatusFilter, 'active']);
+                              } else {
+                                setJobStatusFilter(jobStatusFilter.filter(s => s !== 'active'));
+                              }
+                            }}
+                          >
+                            Active
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={jobStatusFilter.includes('closed')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setJobStatusFilter([...jobStatusFilter, 'closed']);
+                              } else {
+                                setJobStatusFilter(jobStatusFilter.filter(s => s !== 'closed'));
+                              }
+                            }}
+                          >
+                            Closed
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={jobStatusFilter.includes('draft')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setJobStatusFilter([...jobStatusFilter, 'draft']);
+                              } else {
+                                setJobStatusFilter(jobStatusFilter.filter(s => s !== 'draft'));
+                              }
+                            }}
+                          >
+                            Draft
+                          </DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+                      
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
-                            className={`w-full md:w-[180px] justify-between ${jobDeadlineFilter ? 'text-foreground' : 'text-muted-foreground'}`}
+                            className={`w-full md:w-[180px] justify-start text-left font-normal ${!jobDeadlineFilter && "text-muted-foreground"}`}
                           >
-                            <span>Deadline</span>
-                            <CalendarIcon className="ml-2 h-4 w-4" />
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {jobDeadlineFilter ? format(jobDeadlineFilter, "PPP") : <span>Deadline</span>}
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
@@ -1339,97 +1353,38 @@ const Reports = () => {
                             initialFocus
                           />
                           {jobDeadlineFilter && (
-                            <div className="p-3 border-t border-border">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
+                            <div className="p-3 border-t flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => setJobDeadlineFilter(undefined)}
-                                className="w-full"
                               >
-                                Clear date
+                                Clear
                               </Button>
                             </div>
                           )}
                         </PopoverContent>
                       </Popover>
-                      {renderMultiSelect(
-                        "Location", 
-                        locations, 
-                        jobLocationFilter, 
-                        setJobLocationFilter
-                      )}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-full md:w-[180px] justify-between">
-                            <span>Selected Count</span>
-                            <SlidersHorizontal className="ml-2 h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[220px] p-4">
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Min: {selectedStudentsFilter[0]}</span>
-                                <span>Max: {selectedStudentsFilter[1]}</span>
-                              </div>
-                              <Slider
-                                min={0}
-                                max={maxSelectedStudents}
-                                step={1}
-                                value={[selectedStudentsFilter[0], selectedStudentsFilter[1]]}
-                                onValueChange={handleSelectedStudentsChange}
-                                className="[&_[role=slider]]:h-4 [&_[role=slider]]:w-4"
-                              />
-                            </div>
-                            <div className="flex justify-between gap-2">
-                              <Input 
-                                type="number" 
-                                value={selectedStudentsFilter[0]} 
-                                onChange={(e) => {
-                                  const value = parseInt(e.target.value);
-                                  if (!isNaN(value) && value <= selectedStudentsFilter[1]) {
-                                    setSelectedStudentsFilter([value, selectedStudentsFilter[1]]);
-                                  }
-                                }}
-                                className="w-20 h-8"
-                                min={0}
-                                max={selectedStudentsFilter[1]}
-                              />
-                              <span className="flex items-center">to</span>
-                              <Input 
-                                type="number" 
-                                value={selectedStudentsFilter[1]} 
-                                onChange={(e) => {
-                                  const value = parseInt(e.target.value);
-                                  if (!isNaN(value) && value >= selectedStudentsFilter[0]) {
-                                    setSelectedStudentsFilter([selectedStudentsFilter[0], value]);
-                                  }
-                                }}
-                                className="w-20 h-8"
-                                min={selectedStudentsFilter[0]}
-                                max={maxSelectedStudents}
-                              />
-                            </div>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setSelectedStudentsFilter([0, maxSelectedStudents])}
-                              className="w-full"
-                            >
-                              Reset
-                            </Button>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                      
+                      {renderMultiSelect('Location', locations, jobLocationFilter, setJobLocationFilter)}
+                      
+                      <div className="w-full md:w-[280px]">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-sm">Selected Students: {selectedStudentsFilter[0]} - {selectedStudentsFilter[1]}</span>
+                        </div>
+                        <Slider
+                          defaultValue={[0, maxSelectedStudents]}
+                          value={selectedStudentsFilter}
+                          onValueChange={setSelectedStudentsFilter}
+                          min={0}
+                          max={maxSelectedStudents}
+                          step={1}
+                          className="mb-3"
+                        />
+                      </div>
                     </div>
 
-                    {/* Results count */}
-                    <div className="text-sm text-gray-500">
-                      Showing {filteredJobs.length} of {jobs.length} jobs
-                    </div>
-
-                    {/* Table */}
-                    <div className="border rounded-md">
+                    <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1460,42 +1415,31 @@ const Reports = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {filteredJobs.map((job) => (
-                            <TableRow key={job.id}>
-                              <TableCell className="font-medium">{job.title}</TableCell>
-                              <TableCell>{job.company_name}</TableCell>
-                              <TableCell>{job.location}</TableCell>
-                              <TableCell>{job.package}</TableCell>
-                              <TableCell>{job.application_count}</TableCell>
-                              <TableCell>{job.selected_count}</TableCell>
-                              <TableCell>
-                                {job.application_deadline ? (
-                                  format(new Date(job.application_deadline), 'dd MMM yyyy')
-                                ) : (
-                                  "N/A"
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={
-                                    job.status === 'active'
-                                      ? "default"
-                                      : job.status === 'closed'
-                                      ? "secondary"
-                                      : "outline"
-                                  }
-                                >
-                                  {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {filteredJobs.length === 0 && (
+                          {filteredJobs.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                              <TableCell colSpan={8} className="text-center py-4">
                                 No jobs match the filter criteria
                               </TableCell>
                             </TableRow>
+                          ) : (
+                            filteredJobs.map((job) => (
+                              <TableRow key={job.id}>
+                                <TableCell className="font-medium">{job.title}</TableCell>
+                                <TableCell>{job.company_name}</TableCell>
+                                <TableCell>{job.location}</TableCell>
+                                <TableCell>{job.package}</TableCell>
+                                <TableCell>{job.application_count}</TableCell>
+                                <TableCell>{job.selected_count}</TableCell>
+                                <TableCell>
+                                  {job.application_deadline ? format(new Date(job.application_deadline), 'MMM dd, yyyy') : 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {job.status === 'active' && <Badge className="bg-green-500">Active</Badge>}
+                                  {job.status === 'closed' && <Badge className="bg-red-500">Closed</Badge>}
+                                  {job.status === 'draft' && <Badge className="bg-yellow-500">Draft</Badge>}
+                                </TableCell>
+                              </TableRow>
+                            ))
                           )}
                         </TableBody>
                       </Table>
