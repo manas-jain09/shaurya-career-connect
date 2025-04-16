@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -163,7 +164,6 @@ const Applications = () => {
           .from('job_applications')
           .update({
             status: 'rejected',
-            admin_notes: `Automatically rejected because student was ${newStatus} for another position`,
             updated_at: new Date().toISOString()
           })
           .eq('student_id', selectedApplication.student_id)
@@ -203,8 +203,7 @@ const Applications = () => {
       'Location': app.job?.location,
       'Package': app.job?.package,
       'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
-      'Applied Date': new Date(app.created_at || '').toLocaleDateString(),
-      'Offer Letter': app.offer_letter_url || 'Not uploaded'
+      'Applied Date': new Date(app.created_at || '').toLocaleDateString()
     }));
   };
   
@@ -273,14 +272,13 @@ const Applications = () => {
                   <TableHead>Company</TableHead>
                   <TableHead>Applied On</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Offer Letter</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredApplications.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                       No applications found
                     </TableCell>
                   </TableRow>
@@ -316,20 +314,6 @@ const Applications = () => {
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={application.status as JobApplicationStatus} />
-                      </TableCell>
-                      <TableCell>
-                        {application.offer_letter_url ? (
-                          <a 
-                            href={application.offer_letter_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm flex items-center"
-                          >
-                            <FileDown className="mr-1 h-3 w-3" />View
-                          </a>
-                        ) : (
-                          <span className="text-gray-400 text-sm">Not uploaded</span>
-                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button 
