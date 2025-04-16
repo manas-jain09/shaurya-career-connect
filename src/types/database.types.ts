@@ -1,4 +1,3 @@
-
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -17,6 +16,7 @@ export interface StudentProfile {
   is_blocked?: boolean;
   created_at?: string;
   updated_at?: string;
+  department?: string;
 }
 
 export interface ClassXDetails {
@@ -118,6 +118,12 @@ export interface JobApplication {
     last_name: string;
     phone: string;
     is_verified: boolean;
+    department?: string;
+  };
+  graduation_details?: {
+    course?: string;
+    passing_year?: number;
+    college_name?: string;
   };
 }
 

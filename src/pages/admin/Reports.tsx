@@ -11,7 +11,11 @@ import {
   FileSpreadsheet,
   Filter,
   Search,
-  CalendarIcon
+  CalendarIcon,
+  SlidersHorizontal,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -34,6 +38,17 @@ import { CSVLink } from 'react-csv';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus, StudentProfile } from '@/types/database.types';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('students');
@@ -43,24 +58,43 @@ const Reports = () => {
   const [filteredStudents, setFilteredStudents] = useState<any[]>([]);
   const [studentSearch, setStudentSearch] = useState('');
   const [studentVerificationFilter, setStudentVerificationFilter] = useState('all');
-  const [studentCourseFilter, setStudentCourseFilter] = useState('all');
-  const [studentPassingYearFilter, setStudentPassingYearFilter] = useState('all');
+  const [studentCourseFilter, setStudentCourseFilter] = useState<string[]>([]);
+  const [studentPassingYearFilter, setStudentPassingYearFilter] = useState<string[]>([]);
+  const [studentDepartmentFilter, setStudentDepartmentFilter] = useState<string[]>([]);
+  const [studentSelectionFilter, setStudentSelectionFilter] = useState('all');
   const [courses, setCourses] = useState<string[]>([]);
   const [passingYears, setPassingYears] = useState<number[]>([]);
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [studentSortField, setStudentSortField] = useState<string>('name');
+  const [studentSortDirection, setStudentSortDirection] = useState<'asc' | 'desc'>('asc');
   
   // Applications data
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
   const [applicationSearch, setApplicationSearch] = useState('');
-  const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string[]>([]);
   const [applicationDateFilter, setApplicationDateFilter] = useState<Date | undefined>(undefined);
+  const [applicationCourseFilter, setApplicationCourseFilter] = useState<string[]>([]);
+  const [applicationPassingYearFilter, setApplicationPassingYearFilter] = useState<string[]>([]);
+  const [applicationDepartmentFilter, setApplicationDepartmentFilter] = useState<string[]>([]);
+  const [minPackage, setMinPackage] = useState<number>(0);
+  const [maxPackage, setMaxPackage] = useState<number>(100);
+  const [packageRange, setPackageRange] = useState<[number, number]>([0, 100]);
+  const [applicationSortField, setApplicationSortField] = useState<string>('date');
+  const [applicationSortDirection, setApplicationSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // Jobs data
   const [jobs, setJobs] = useState<any[]>([]);
   const [filteredJobs, setFilteredJobs] = useState<any[]>([]);
   const [jobSearch, setJobSearch] = useState('');
-  const [jobStatusFilter, setJobStatusFilter] = useState('all');
+  const [jobStatusFilter, setJobStatusFilter] = useState<string[]>([]);
   const [jobDeadlineFilter, setJobDeadlineFilter] = useState<Date | undefined>(undefined);
+  const [jobLocationFilter, setJobLocationFilter] = useState<string[]>([]);
+  const [selectedStudentsFilter, setSelectedStudentsFilter] = useState<[number, number]>([0, 100]);
+  const [maxSelectedStudents, setMaxSelectedStudents] = useState(100);
+  const [locations, setLocations] = useState<string[]>([]);
+  const [jobSortField, setJobSortField] = useState<string>('title');
+  const [jobSortDirection, setJobSortDirection] = useState<'asc' | 'desc'>('asc');
   
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -92,18 +126,31 @@ const Reports = () => {
 
       if (gradError) throw gradError;
 
+      // Fetch all job applications to check selection status
+      const { data: applicationsData, error: applicationsError } = await supabase
+        .from('job_applications')
+        .select('*')
+        .in('status', ['selected', 'internship', 'ppo']);
+
+      if (applicationsError) throw applicationsError;
+
       // Map graduation data to student profiles
       const studentsWithGraduation = studentsData.map(student => {
         const gradDetails = gradData.find(g => g.student_id === student.id) || null;
+        // Check if student is selected in any job
+        const isSelected = applicationsData.some(app => app.student_id === student.id);
+        
         return {
           ...student,
-          graduation: gradDetails
+          graduation: gradDetails,
+          is_selected: isSelected
         };
       });
 
-      // Get unique courses and passing years for filters
+      // Get unique courses, passing years, and departments for filters
       const allCourses = new Set<string>();
       const allPassingYears = new Set<number>();
+      const allDepartments = new Set<string>();
       
       gradData.forEach(grad => {
         if (grad.course) {
@@ -114,8 +161,15 @@ const Reports = () => {
         }
       });
       
+      studentsData.forEach(student => {
+        if (student.department) {
+          allDepartments.add(student.department);
+        }
+      });
+      
       setCourses(Array.from(allCourses).sort());
       setPassingYears(Array.from(allPassingYears).sort());
+      setDepartments(Array.from(allDepartments).sort());
       
       setStudents(studentsWithGraduation || []);
       setFilteredStudents(studentsWithGraduation || []);
@@ -139,14 +193,65 @@ const Reports = () => {
         .select(`
           *,
           job:job_id(title, company_name, location, package),
-          student_profile:student_id(first_name, last_name, phone, is_verified)
+          student_profile:student_id(first_name, last_name, phone, is_verified, department)
         `)
         .order('created_at', { ascending: false });
       
       if (applicationsError) throw applicationsError;
       
-      setApplications(applicationsData as JobApplication[] || []);
-      setFilteredApplications(applicationsData as JobApplication[] || []);
+      // Fetch graduation details for all students
+      const { data: gradData, error: gradError } = await supabase
+        .from('graduation_details')
+        .select('*');
+      
+      if (gradError) throw gradError;
+      
+      // Combine application data with graduation details
+      const applicationsWithGraduation = applicationsData.map(app => {
+        const gradDetails = gradData.find(g => g.student_id === app.student_id) || null;
+        return {
+          ...app,
+          graduation_details: gradDetails
+        };
+      });
+      
+      // Extract unique courses, passing years, and departments
+      const allCourses = new Set<string>();
+      const allPassingYears = new Set<number>();
+      const allDepartments = new Set<string>();
+      
+      applicationsWithGraduation.forEach(app => {
+        if (app.graduation_details?.course) {
+          allCourses.add(app.graduation_details.course);
+        }
+        if (app.graduation_details?.passing_year) {
+          allPassingYears.add(app.graduation_details.passing_year);
+        }
+        if (app.student_profile?.department) {
+          allDepartments.add(app.student_profile.department);
+        }
+      });
+      
+      // Find min and max package values
+      let minPackageValue = Infinity;
+      let maxPackageValue = 0;
+      
+      applicationsWithGraduation.forEach(app => {
+        const packageValue = parseFloat(app.job?.package.replace(/[^\d.]/g, '')) || 0;
+        if (packageValue < minPackageValue) minPackageValue = packageValue;
+        if (packageValue > maxPackageValue) maxPackageValue = packageValue;
+      });
+      
+      setMinPackage(Math.floor(minPackageValue));
+      setMaxPackage(Math.ceil(maxPackageValue));
+      setPackageRange([Math.floor(minPackageValue), Math.ceil(maxPackageValue)]);
+      
+      setCourses(Array.from(allCourses).sort());
+      setPassingYears(Array.from(allPassingYears).sort());
+      setDepartments(Array.from(allDepartments).sort());
+      
+      setApplications(applicationsWithGraduation as JobApplication[]);
+      setFilteredApplications(applicationsWithGraduation as JobApplication[]);
     } catch (error) {
       console.error('Error fetching applications data:', error);
       toast({
@@ -169,20 +274,44 @@ const Reports = () => {
       
       if (jobsError) throw jobsError;
       
-      // Fetch application counts for each job
+      // Fetch application counts and selected students counts for each job
       const jobsWithCounts = await Promise.all(
         (jobsData || []).map(async (job) => {
-          const { count, error } = await supabase
+          const { count: totalCount, error: countError } = await supabase
             .from('job_applications')
             .select('*', { count: 'exact', head: true })
             .eq('job_id', job.id);
           
+          const { count: selectedCount, error: selectedError } = await supabase
+            .from('job_applications')
+            .select('*', { count: 'exact', head: true })
+            .eq('job_id', job.id)
+            .in('status', ['selected', 'internship', 'ppo']);
+          
           return {
             ...job,
-            application_count: count || 0
+            application_count: totalCount || 0,
+            selected_count: selectedCount || 0
           };
         })
       );
+      
+      // Extract unique locations and max selected students
+      const allLocations = new Set<string>();
+      let maxSelected = 0;
+      
+      jobsWithCounts.forEach(job => {
+        if (job.location) {
+          allLocations.add(job.location);
+        }
+        if (job.selected_count > maxSelected) {
+          maxSelected = job.selected_count;
+        }
+      });
+      
+      setLocations(Array.from(allLocations).sort());
+      setMaxSelectedStudents(maxSelected > 0 ? maxSelected : 100);
+      setSelectedStudentsFilter([0, maxSelected > 0 ? maxSelected : 100]);
       
       setJobs(jobsWithCounts);
       setFilteredJobs(jobsWithCounts);
@@ -196,6 +325,139 @@ const Reports = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Sort function for students
+  const sortStudents = (data: any[]) => {
+    return [...data].sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (studentSortField) {
+        case 'name':
+          valueA = `${a.first_name} ${a.last_name}`.toLowerCase();
+          valueB = `${b.first_name} ${b.last_name}`.toLowerCase();
+          break;
+        case 'college':
+          valueA = (a.graduation?.college_name || '').toLowerCase();
+          valueB = (b.graduation?.college_name || '').toLowerCase();
+          break;
+        case 'course':
+          valueA = (a.graduation?.course || '').toLowerCase();
+          valueB = (b.graduation?.course || '').toLowerCase();
+          break;
+        case 'passing_year':
+          valueA = a.graduation?.passing_year || 0;
+          valueB = b.graduation?.passing_year || 0;
+          break;
+        case 'status':
+          valueA = a.is_verified ? 1 : 0;
+          valueB = b.is_verified ? 1 : 0;
+          break;
+        default:
+          valueA = a[studentSortField] || '';
+          valueB = b[studentSortField] || '';
+      }
+      
+      if (studentSortDirection === 'asc') {
+        return valueA > valueB ? 1 : -1;
+      } else {
+        return valueA < valueB ? 1 : -1;
+      }
+    });
+  };
+
+  // Sort function for applications
+  const sortApplications = (data: JobApplication[]) => {
+    return [...data].sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (applicationSortField) {
+        case 'student':
+          valueA = `${a.student_profile?.first_name || ''} ${a.student_profile?.last_name || ''}`.toLowerCase();
+          valueB = `${b.student_profile?.first_name || ''} ${b.student_profile?.last_name || ''}`.toLowerCase();
+          break;
+        case 'job':
+          valueA = (a.job?.title || '').toLowerCase();
+          valueB = (b.job?.title || '').toLowerCase();
+          break;
+        case 'company':
+          valueA = (a.job?.company_name || '').toLowerCase();
+          valueB = (b.job?.company_name || '').toLowerCase();
+          break;
+        case 'date':
+          valueA = new Date(a.created_at || '').getTime();
+          valueB = new Date(b.created_at || '').getTime();
+          break;
+        case 'status':
+          valueA = a.status;
+          valueB = b.status;
+          break;
+        case 'package':
+          valueA = parseFloat((a.job?.package || '0').replace(/[^\d.]/g, '')) || 0;
+          valueB = parseFloat((b.job?.package || '0').replace(/[^\d.]/g, '')) || 0;
+          break;
+        default:
+          valueA = a[applicationSortField as keyof JobApplication] || '';
+          valueB = b[applicationSortField as keyof JobApplication] || '';
+      }
+      
+      if (applicationSortDirection === 'asc') {
+        return valueA > valueB ? 1 : -1;
+      } else {
+        return valueA < valueB ? 1 : -1;
+      }
+    });
+  };
+
+  // Sort function for jobs
+  const sortJobs = (data: any[]) => {
+    return [...data].sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (jobSortField) {
+        case 'title':
+          valueA = a.title.toLowerCase();
+          valueB = b.title.toLowerCase();
+          break;
+        case 'company':
+          valueA = a.company_name.toLowerCase();
+          valueB = b.company_name.toLowerCase();
+          break;
+        case 'location':
+          valueA = a.location.toLowerCase();
+          valueB = b.location.toLowerCase();
+          break;
+        case 'package':
+          valueA = parseFloat(a.package.replace(/[^\d.]/g, '')) || 0;
+          valueB = parseFloat(b.package.replace(/[^\d.]/g, '')) || 0;
+          break;
+        case 'applications':
+          valueA = a.application_count;
+          valueB = b.application_count;
+          break;
+        case 'selected':
+          valueA = a.selected_count;
+          valueB = b.selected_count;
+          break;
+        case 'deadline':
+          valueA = new Date(a.application_deadline || '').getTime();
+          valueB = new Date(b.application_deadline || '').getTime();
+          break;
+        case 'status':
+          valueA = a.status;
+          valueB = b.status;
+          break;
+        default:
+          valueA = a[jobSortField] || '';
+          valueB = b[jobSortField] || '';
+      }
+      
+      if (jobSortDirection === 'asc') {
+        return valueA > valueB ? 1 : -1;
+      } else {
+        return valueA < valueB ? 1 : -1;
+      }
+    });
   };
 
   // Apply students filters
@@ -230,21 +492,54 @@ const Reports = () => {
     }
     
     // Filter by course
-    if (studentCourseFilter !== 'all') {
+    if (studentCourseFilter.length > 0) {
       filtered = filtered.filter(student => 
-        student.graduation?.course === studentCourseFilter
+        student.graduation?.course && studentCourseFilter.includes(student.graduation.course)
       );
     }
     
     // Filter by passing year
-    if (studentPassingYearFilter !== 'all') {
+    if (studentPassingYearFilter.length > 0) {
       filtered = filtered.filter(student => 
-        student.graduation?.passing_year === parseInt(studentPassingYearFilter)
+        student.graduation?.passing_year && 
+        studentPassingYearFilter.includes(student.graduation.passing_year.toString())
       );
     }
     
-    setFilteredStudents(filtered);
-  }, [studentSearch, studentVerificationFilter, studentCourseFilter, studentPassingYearFilter, students]);
+    // Filter by department
+    if (studentDepartmentFilter.length > 0) {
+      filtered = filtered.filter(student => 
+        student.department && studentDepartmentFilter.includes(student.department)
+      );
+    }
+    
+    // Filter by selection status
+    if (studentSelectionFilter !== 'all') {
+      filtered = filtered.filter(student => {
+        if (studentSelectionFilter === 'selected') {
+          return student.is_selected === true;
+        } else if (studentSelectionFilter === 'not_selected') {
+          return student.is_selected !== true;
+        }
+        return true;
+      });
+    }
+    
+    // Apply sorting
+    const sortedData = sortStudents(filtered);
+    
+    setFilteredStudents(sortedData);
+  }, [
+    studentSearch, 
+    studentVerificationFilter, 
+    studentCourseFilter, 
+    studentPassingYearFilter, 
+    studentDepartmentFilter,
+    studentSelectionFilter,
+    studentSortField,
+    studentSortDirection,
+    students
+  ]);
 
   // Apply applications filters
   useEffect(() => {
@@ -262,8 +557,8 @@ const Reports = () => {
     }
     
     // Filter by status
-    if (applicationStatusFilter !== 'all') {
-      filtered = filtered.filter(app => app.status === applicationStatusFilter);
+    if (applicationStatusFilter.length > 0) {
+      filtered = filtered.filter(app => applicationStatusFilter.includes(app.status));
     }
     
     // Filter by date
@@ -280,8 +575,52 @@ const Reports = () => {
       });
     }
     
-    setFilteredApplications(filtered);
-  }, [applicationSearch, applicationStatusFilter, applicationDateFilter, applications]);
+    // Filter by course
+    if (applicationCourseFilter.length > 0) {
+      filtered = filtered.filter(app => 
+        app.graduation_details?.course && 
+        applicationCourseFilter.includes(app.graduation_details.course)
+      );
+    }
+    
+    // Filter by passing year
+    if (applicationPassingYearFilter.length > 0) {
+      filtered = filtered.filter(app => 
+        app.graduation_details?.passing_year && 
+        applicationPassingYearFilter.includes(app.graduation_details.passing_year.toString())
+      );
+    }
+    
+    // Filter by department
+    if (applicationDepartmentFilter.length > 0) {
+      filtered = filtered.filter(app => 
+        app.student_profile?.department && 
+        applicationDepartmentFilter.includes(app.student_profile.department)
+      );
+    }
+    
+    // Filter by package range
+    filtered = filtered.filter(app => {
+      const packageValue = parseFloat((app.job?.package || '0').replace(/[^\d.]/g, '')) || 0;
+      return packageValue >= packageRange[0] && packageValue <= packageRange[1];
+    });
+    
+    // Apply sorting
+    const sortedData = sortApplications(filtered);
+    
+    setFilteredApplications(sortedData);
+  }, [
+    applicationSearch, 
+    applicationStatusFilter, 
+    applicationDateFilter, 
+    applicationCourseFilter,
+    applicationPassingYearFilter,
+    applicationDepartmentFilter,
+    packageRange,
+    applicationSortField,
+    applicationSortDirection,
+    applications
+  ]);
 
   // Apply jobs filters
   useEffect(() => {
@@ -298,8 +637,8 @@ const Reports = () => {
     }
     
     // Filter by status
-    if (jobStatusFilter !== 'all') {
-      filtered = filtered.filter(job => job.status === jobStatusFilter);
+    if (jobStatusFilter.length > 0) {
+      filtered = filtered.filter(job => jobStatusFilter.includes(job.status));
     }
     
     // Filter by deadline
@@ -316,8 +655,105 @@ const Reports = () => {
       });
     }
     
-    setFilteredJobs(filtered);
-  }, [jobSearch, jobStatusFilter, jobDeadlineFilter, jobs]);
+    // Filter by location
+    if (jobLocationFilter.length > 0) {
+      filtered = filtered.filter(job => 
+        job.location && jobLocationFilter.includes(job.location)
+      );
+    }
+    
+    // Filter by selected students range
+    filtered = filtered.filter(job => 
+      job.selected_count >= selectedStudentsFilter[0] && 
+      job.selected_count <= selectedStudentsFilter[1]
+    );
+    
+    // Apply sorting
+    const sortedData = sortJobs(filtered);
+    
+    setFilteredJobs(sortedData);
+  }, [
+    jobSearch, 
+    jobStatusFilter, 
+    jobDeadlineFilter, 
+    jobLocationFilter,
+    selectedStudentsFilter,
+    jobSortField,
+    jobSortDirection,
+    jobs
+  ]);
+
+  // Helper function to render sort button
+  const renderSortButton = (field: string, label: string, currentField: string, setField: (field: string) => void, currentDirection: 'asc' | 'desc', setDirection: (direction: 'asc' | 'desc') => void) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="flex items-center gap-1"
+      onClick={() => {
+        if (currentField === field) {
+          setDirection(currentDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+          setField(field);
+          setDirection('asc');
+        }
+      }}
+    >
+      {label}
+      {currentField === field ? (
+        currentDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />
+      ) : (
+        <ArrowUpDown className="h-4 w-4" />
+      )}
+    </Button>
+  );
+
+  // Helper function to render multi-select dropdown
+  const renderMultiSelect = (
+    label: string, 
+    options: string[] | number[], 
+    selectedValues: string[], 
+    setSelectedValues: (values: string[]) => void
+  ) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="w-full md:w-[180px] justify-between">
+          <span className="truncate">{label}</span>
+          {selectedValues.length > 0 && (
+            <Badge className="ml-2 bg-primary text-primary-foreground">
+              {selectedValues.length}
+            </Badge>
+          )}
+          <Filter className="ml-2 h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-[220px] max-h-[400px] overflow-auto">
+        <DropdownMenuLabel>{label}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
+          onClick={() => setSelectedValues([])}
+          className="justify-between"
+        >
+          Clear all
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {options.map((option) => (
+          <DropdownMenuCheckboxItem
+            key={option.toString()}
+            checked={selectedValues.includes(option.toString())}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                setSelectedValues([...selectedValues, option.toString()]);
+              } else {
+                setSelectedValues(selectedValues.filter(v => v !== option.toString()));
+              }
+            }}
+          >
+            {option.toString()}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   // CSV Export Functions
   const getStudentsCSVData = () => {
@@ -325,6 +761,7 @@ const Reports = () => {
       'Name': `${student.first_name} ${student.last_name}`,
       'Phone': student.phone,
       'Email': student.email,
+      'Department': student.department || 'N/A',
       'College': student.graduation?.college_name || 'N/A',
       'Course': student.graduation?.course || 'N/A',
       'Passing Year': student.graduation?.passing_year || 'N/A',
@@ -333,7 +770,8 @@ const Reports = () => {
       'Verified': student.is_verified ? 'Yes' : 'No',
       'Verification Status': student.verification_status,
       'Flagged Sections': student.flagged_sections ? student.flagged_sections.join(', ') : 'None',
-      'Blocked': student.is_blocked ? 'Yes' : 'No'
+      'Blocked': student.is_blocked ? 'Yes' : 'No',
+      'Selected': student.is_selected ? 'Yes' : 'No'
     }));
   };
 
@@ -341,6 +779,9 @@ const Reports = () => {
     return filteredApplications.map(app => ({
       'Student Name': `${app.student_profile?.first_name} ${app.student_profile?.last_name}`,
       'Phone': app.student_profile?.phone || 'N/A',
+      'Department': app.student_profile?.department || 'N/A',
+      'Course': app.graduation_details?.course || 'N/A',
+      'Passing Year': app.graduation_details?.passing_year || 'N/A',
       'Job Title': app.job?.title || 'N/A',
       'Company': app.job?.company_name || 'N/A',
       'Location': app.job?.location || 'N/A',
@@ -360,6 +801,7 @@ const Reports = () => {
       'Package': job.package,
       'Status': job.status,
       'Applications': job.application_count,
+      'Selected Students': job.selected_count,
       'Deadline': job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : 'N/A',
       'Created On': job.created_at ? new Date(job.created_at).toLocaleDateString() : 'N/A',
       'Min 10th Marks': job.min_class_x_marks || 'N/A',
@@ -435,30 +877,20 @@ const Reports = () => {
                           </SelectContent>
                         </Select>
                         
-                        <Select value={studentCourseFilter} onValueChange={setStudentCourseFilter}>
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Course" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Courses</SelectItem>
-                            {courses.map(course => (
-                              <SelectItem key={course} value={course}>{course}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {renderMultiSelect("Courses", courses, studentCourseFilter, setStudentCourseFilter)}
                         
-                        <Select 
-                          value={studentPassingYearFilter} 
-                          onValueChange={setStudentPassingYearFilter}
-                        >
+                        {renderMultiSelect("Passing Years", passingYears, studentPassingYearFilter, setStudentPassingYearFilter)}
+                        
+                        {renderMultiSelect("Departments", departments, studentDepartmentFilter, setStudentDepartmentFilter)}
+                        
+                        <Select value={studentSelectionFilter} onValueChange={setStudentSelectionFilter}>
                           <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Passing Year" />
+                            <SelectValue placeholder="Selection Status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All Years</SelectItem>
-                            {passingYears.map(year => (
-                              <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
-                            ))}
+                            <SelectItem value="all">All Students</SelectItem>
+                            <SelectItem value="selected">Selected</SelectItem>
+                            <SelectItem value="not_selected">Not Selected</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -468,18 +900,31 @@ const Reports = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Name</TableHead>
+                            <TableHead>
+                              {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
                             <TableHead>Contact</TableHead>
-                            <TableHead>Course</TableHead>
-                            <TableHead>College</TableHead>
-                            <TableHead>Passing Year</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>
+                              {renderSortButton('department', 'Department', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('course', 'Course', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('passing_year', 'Passing Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredStudents.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                              <TableCell colSpan={7} className="text-center py-6 text-gray-500">
                                 No students found
                               </TableCell>
                             </TableRow>
@@ -490,10 +935,16 @@ const Reports = () => {
                                   <div className="font-medium">
                                     {student.first_name} {student.last_name}
                                   </div>
+                                  {student.is_selected && (
+                                    <Badge className="mt-1 bg-green-100 text-green-800">Selected</Badge>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   <div>{student.phone}</div>
                                   <div className="text-xs text-gray-500">{student.email}</div>
+                                </TableCell>
+                                <TableCell>
+                                  {student.department || 'N/A'}
                                 </TableCell>
                                 <TableCell>
                                   {student.graduation?.course || 'N/A'}
@@ -557,29 +1008,124 @@ const Reports = () => {
                       </div>
                       
                       <div className="flex flex-wrap gap-3">
-                        <Select value={applicationStatusFilter} onValueChange={setApplicationStatusFilter}>
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="applied">Applied</SelectItem>
-                            <SelectItem value="under_review">Under Review</SelectItem>
-                            <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                            <SelectItem value="selected">Selected</SelectItem>
-                            <SelectItem value="internship">Internship</SelectItem>
-                            <SelectItem value="ppo">PPO</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-[180px] justify-between">
+                              <span className="truncate">Status</span>
+                              {applicationStatusFilter.length > 0 && (
+                                <Badge className="ml-2 bg-primary text-primary-foreground">{applicationStatusFilter.length}</Badge>
+                              )}
+                              <Filter className="ml-2 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[220px]">
+                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => setApplicationStatusFilter([])}
+                              className="justify-between"
+                            >
+                              Clear all
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('applied')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'applied']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'applied'));
+                                }
+                              }}
+                            >
+                              Applied
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('under_review')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'under_review']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'under_review'));
+                                }
+                              }}
+                            >
+                              Under Review
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('shortlisted')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'shortlisted']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'shortlisted'));
+                                }
+                              }}
+                            >
+                              Shortlisted
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('rejected')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'rejected']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'rejected'));
+                                }
+                              }}
+                            >
+                              Rejected
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('selected')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'selected']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'selected'));
+                                }
+                              }}
+                            >
+                              Selected
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('internship')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'internship']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'internship'));
+                                }
+                              }}
+                            >
+                              Internship
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={applicationStatusFilter.includes('ppo')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setApplicationStatusFilter([...applicationStatusFilter, 'ppo']);
+                                } else {
+                                  setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'ppo'));
+                                }
+                              }}
+                            >
+                              PPO
+                            </DropdownMenuCheckboxItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {renderMultiSelect("Courses", courses, applicationCourseFilter, setApplicationCourseFilter)}
+                        
+                        {renderMultiSelect("Passing Years", passingYears, applicationPassingYearFilter, setApplicationPassingYearFilter)}
+                        
+                        {renderMultiSelect("Departments", departments, applicationDepartmentFilter, setApplicationDepartmentFilter)}
                         
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
                               variant={"outline"}
-                              className={`w-[180px] justify-start text-left font-normal ${
-                                !applicationDateFilter && "text-muted-foreground"
-                              }`}
+                              className="w-[180px] justify-start text-left font-normal"
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {applicationDateFilter ? (
@@ -610,6 +1156,36 @@ const Reports = () => {
                             )}
                           </PopoverContent>
                         </Popover>
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-[180px] justify-start text-left font-normal"
+                            >
+                              <SlidersHorizontal className="mr-2 h-4 w-4" />
+                              <span>Package Range</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4">
+                            <div className="space-y-4">
+                              <h4 className="font-medium">Package Range</h4>
+                              <div className="flex justify-between">
+                                <span>₹{packageRange[0]}L</span>
+                                <span>₹{packageRange[1]}L</span>
+                              </div>
+                              <Slider
+                                defaultValue={[minPackage, maxPackage]}
+                                value={packageRange}
+                                min={minPackage}
+                                max={maxPackage}
+                                step={0.5}
+                                onValueChange={(value) => setPackageRange(value as [number, number])}
+                                className="w-full"
+                              />
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
                     
@@ -617,18 +1193,31 @@ const Reports = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Student</TableHead>
-                            <TableHead>Job</TableHead>
-                            <TableHead>Company</TableHead>
-                            <TableHead>Applied On</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>
+                              {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('job', 'Job', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('company', 'Company', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('date', 'Applied On', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
                             <TableHead>Offer Letter</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredApplications.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                              <TableCell colSpan={7} className="text-center py-6 text-gray-500">
                                 No applications found
                               </TableCell>
                             </TableRow>
@@ -642,6 +1231,11 @@ const Reports = () => {
                                   <div className="text-xs text-gray-500">
                                     {application.student_profile?.phone}
                                   </div>
+                                  {application.student_profile?.department && (
+                                    <div className="text-xs text-gray-500">
+                                      {application.student_profile.department}
+                                    </div>
+                                  )}
                                 </TableCell>
                                 <TableCell>{application.job?.title || 'N/A'}</TableCell>
                                 <TableCell>{application.job?.company_name || 'N/A'}</TableCell>
@@ -672,6 +1266,7 @@ const Reports = () => {
                                     </Badge>
                                   </div>
                                 </TableCell>
+                                <TableCell>{application.job?.package || 'N/A'}</TableCell>
                                 <TableCell>
                                   {application.offer_letter_url ? (
                                     <a 
@@ -724,25 +1319,72 @@ const Reports = () => {
                       </div>
                       
                       <div className="flex flex-wrap gap-3">
-                        <Select value={jobStatusFilter} onValueChange={setJobStatusFilter}>
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            <SelectItem value="active">Active</SelectItem>
-                            <SelectItem value="closed">Closed</SelectItem>
-                            <SelectItem value="draft">Draft</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-[180px] justify-between">
+                              <span className="truncate">Status</span>
+                              {jobStatusFilter.length > 0 && (
+                                <Badge className="ml-2 bg-primary text-primary-foreground">{jobStatusFilter.length}</Badge>
+                              )}
+                              <Filter className="ml-2 h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[220px]">
+                            <DropdownMenuLabel>Status</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => setJobStatusFilter([])}
+                              className="justify-between"
+                            >
+                              Clear all
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuCheckboxItem
+                              checked={jobStatusFilter.includes('active')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setJobStatusFilter([...jobStatusFilter, 'active']);
+                                } else {
+                                  setJobStatusFilter(jobStatusFilter.filter(s => s !== 'active'));
+                                }
+                              }}
+                            >
+                              Active
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={jobStatusFilter.includes('closed')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setJobStatusFilter([...jobStatusFilter, 'closed']);
+                                } else {
+                                  setJobStatusFilter(jobStatusFilter.filter(s => s !== 'closed'));
+                                }
+                              }}
+                            >
+                              Closed
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuCheckboxItem
+                              checked={jobStatusFilter.includes('draft')}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setJobStatusFilter([...jobStatusFilter, 'draft']);
+                                } else {
+                                  setJobStatusFilter(jobStatusFilter.filter(s => s !== 'draft'));
+                                }
+                              }}
+                            >
+                              Draft
+                            </DropdownMenuCheckboxItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {renderMultiSelect("Location", locations, jobLocationFilter, setJobLocationFilter)}
                         
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button
                               variant={"outline"}
-                              className={`w-[180px] justify-start text-left font-normal ${
-                                !jobDeadlineFilter && "text-muted-foreground"
-                              }`}
+                              className="w-[180px] justify-start text-left font-normal"
                             >
                               <CalendarIcon className="mr-2 h-4 w-4" />
                               {jobDeadlineFilter ? (
@@ -773,6 +1415,36 @@ const Reports = () => {
                             )}
                           </PopoverContent>
                         </Popover>
+                        
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="w-[180px] justify-start text-left font-normal"
+                            >
+                              <Users className="mr-2 h-4 w-4" />
+                              <span>Selected Students</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4">
+                            <div className="space-y-4">
+                              <h4 className="font-medium">Selected Students Range</h4>
+                              <div className="flex justify-between">
+                                <span>{selectedStudentsFilter[0]}</span>
+                                <span>{selectedStudentsFilter[1]}</span>
+                              </div>
+                              <Slider
+                                defaultValue={[0, maxSelectedStudents]}
+                                value={selectedStudentsFilter}
+                                min={0}
+                                max={maxSelectedStudents > 0 ? maxSelectedStudents : 100}
+                                step={1}
+                                onValueChange={(value) => setSelectedStudentsFilter(value as [number, number])}
+                                className="w-full"
+                              />
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                     </div>
                     
@@ -780,19 +1452,36 @@ const Reports = () => {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Job</TableHead>
-                            <TableHead>Company</TableHead>
-                            <TableHead>Location</TableHead>
-                            <TableHead>Package</TableHead>
-                            <TableHead>Applications</TableHead>
-                            <TableHead>Deadline</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>
+                              {renderSortButton('title', 'Job', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('company', 'Company', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('location', 'Location', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('package', 'Package', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('applications', 'Applications', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('selected', 'Selected', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('deadline', 'Deadline', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {filteredJobs.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                              <TableCell colSpan={8} className="text-center py-6 text-gray-500">
                                 No jobs found
                               </TableCell>
                             </TableRow>
@@ -808,6 +1497,11 @@ const Reports = () => {
                                 <TableCell>
                                   <Badge className="bg-blue-100 text-blue-800">
                                     {job.application_count}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className="bg-green-100 text-green-800">
+                                    {job.selected_count}
                                   </Badge>
                                 </TableCell>
                                 <TableCell>
