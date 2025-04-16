@@ -15,7 +15,7 @@ import { checkJobEligibility } from '@/utils/eligibilityChecks';
 
 const Jobs = () => {
   const { user } = useAuth();
-  const { profile, isVerified, hasPlacementInterest, isEligibleForJobs, flaggedSections } = useStudentProfile();
+  const { profile, isEligibleForJobs } = useStudentProfile();
   const { applications, refreshData: refreshApplications } = useJobApplications();
   
   const [jobs, setJobs] = useState<JobPosting[]>([]);
@@ -90,7 +90,12 @@ const Jobs = () => {
     refreshApplications();
   };
 
-  if (!isVerified || !hasPlacementInterest) {
+  // Check if the profile is not verified or doesn't have placement interest
+  const isProfileNotVerified = profile ? !profile.is_verified : true;
+  const hasNoPlacementInterest = profile ? profile.placement_interest !== 'placement/internship' : true;
+  const hasFlaggedSections = profile?.flagged_sections && profile.flagged_sections.length > 0;
+
+  if (isProfileNotVerified || hasNoPlacementInterest) {
     return (
       <StudentLayout>
         <div className="py-8">
@@ -98,12 +103,12 @@ const Jobs = () => {
             <CardContent className="p-6 flex flex-col items-center justify-center text-center">
               <AlertCircle className="h-12 w-12 text-amber-500 mb-4" />
               <h3 className="text-lg font-medium text-gray-700">
-                {!isVerified 
+                {isProfileNotVerified 
                   ? "Your profile is not verified yet" 
                   : "You haven't opted for placements"}
               </h3>
               <p className="text-gray-500 mt-2 max-w-md">
-                {!isVerified 
+                {isProfileNotVerified 
                   ? "Your profile needs to be verified by the placement cell before you can view job opportunities. Please complete your profile and wait for verification." 
                   : "You need to opt for placements in your profile settings to view job opportunities."}
               </p>
@@ -161,8 +166,8 @@ const Jobs = () => {
                 key={job.id}
                 job={job}
                 isApplied={isJobApplied(job.id)}
-                isProfileVerified={isVerified}
-                isFlaggedProfile={flaggedSections && flaggedSections.length > 0}
+                isProfileVerified={!isProfileNotVerified}
+                isFlaggedProfile={hasFlaggedSections}
                 onApply={handleApplySuccess}
                 isEligible={jobEligibility[job.id as string] || false}
               />
