@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -74,7 +73,7 @@ const Reports = () => {
   const [applications, setApplications] = useState<JobApplication[]>([]);
   const [filteredApplications, setFilteredApplications] = useState<JobApplication[]>([]);
   const [applicationSearch, setApplicationSearch] = useState('');
-  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string[]>([]);
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string[]>(['applied', 'under_review', 'shortlisted', 'selected', 'rejected', 'internship', 'ppo']);
   const [applicationDateFilter, setApplicationDateFilter] = useState<Date | undefined>(undefined);
   const [applicationCourseFilter, setApplicationCourseFilter] = useState<string[]>([]);
   const [applicationPassingYearFilter, setApplicationPassingYearFilter] = useState<string[]>([]);
@@ -1050,7 +1049,7 @@ const Reports = () => {
                       
                       {renderMultiSelect(
                         "Status",
-                        ['applied', 'shortlisted', 'interviewed', 'selected', 'rejected', 'withdrawn', 'internship', 'ppo'],
+                        ['applied', 'under_review', 'shortlisted', 'selected', 'rejected', 'internship', 'ppo'],
                         applicationStatusFilter,
                         setApplicationStatusFilter
                       )}
