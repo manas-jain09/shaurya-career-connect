@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -848,3 +849,610 @@ const Reports = () => {
                 <Briefcase size={16} className="mr-2" /> Jobs
               </TabsTrigger>
             </TabsList>
+            
+            {/* Students Tab Content */}
+            <TabsContent value="students" className="space-y-4">
+              {/* Students filters and table content */}
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Students Data</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CSVLink 
+                        data={getStudentsCSVData()}
+                        filename={`students-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+                      >
+                        <Download size={16} /> Export CSV
+                      </CSVLink>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
+                        <Input
+                          placeholder="Search students..."
+                          value={studentSearch}
+                          onChange={(e) => setStudentSearch(e.target.value)}
+                          className="w-full"
+                          icon={<Search className="h-4 w-4" />}
+                        />
+                      </div>
+                      <div>
+                        <Select value={studentVerificationFilter} onValueChange={setStudentVerificationFilter}>
+                          <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectValue placeholder="Verification" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Verification</SelectItem>
+                            <SelectItem value="verified">Verified</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="flagged">Flagged</SelectItem>
+                            <SelectItem value="blocked">Blocked</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {renderMultiSelect('Course', courses, studentCourseFilter, setStudentCourseFilter)}
+                      {renderMultiSelect('Passing Year', passingYears, studentPassingYearFilter, setStudentPassingYearFilter)}
+                      {renderMultiSelect('Department', departments, studentDepartmentFilter, setStudentDepartmentFilter)}
+                      <div>
+                        <Select value={studentSelectionFilter} onValueChange={setStudentSelectionFilter}>
+                          <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectValue placeholder="Selection Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Students</SelectItem>
+                            <SelectItem value="selected">Selected</SelectItem>
+                            <SelectItem value="not_selected">Not Selected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              {renderSortButton('name', 'Name', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>
+                              {renderSortButton('college', 'College', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('course', 'Course', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('passing_year', 'Passing Year', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('department', 'Department', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', studentSortField, setStudentSortField, studentSortDirection, setStudentSortDirection)}
+                            </TableHead>
+                            <TableHead>Selection</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredStudents.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={8} className="text-center py-4">
+                                No students match the filter criteria
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredStudents.map((student) => (
+                              <TableRow key={student.id}>
+                                <TableCell className="font-medium">
+                                  {student.first_name} {student.last_name}
+                                </TableCell>
+                                <TableCell>{student.phone}</TableCell>
+                                <TableCell>{student.graduation?.college_name || 'N/A'}</TableCell>
+                                <TableCell>{student.graduation?.course || 'N/A'}</TableCell>
+                                <TableCell>{student.graduation?.passing_year || 'N/A'}</TableCell>
+                                <TableCell>{student.department || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {student.is_verified ? (
+                                    <Badge className="bg-green-500">Verified</Badge>
+                                  ) : student.flagged_sections && student.flagged_sections.length > 0 ? (
+                                    <Badge className="bg-yellow-500">Flagged</Badge>
+                                  ) : (
+                                    <Badge className="bg-blue-500">Pending</Badge>
+                                  )}
+                                  {student.is_blocked && (
+                                    <Badge className="ml-1 bg-red-500">Blocked</Badge>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {student.is_selected ? (
+                                    <Badge className="bg-green-500">Selected</Badge>
+                                  ) : (
+                                    <Badge variant="outline">Not Selected</Badge>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Applications Tab Content */}
+            <TabsContent value="applications" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Applications Data</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CSVLink 
+                        data={getApplicationsCSVData()}
+                        filename={`applications-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+                      >
+                        <Download size={16} /> Export CSV
+                      </CSVLink>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
+                        <Input
+                          placeholder="Search applications..."
+                          value={applicationSearch}
+                          onChange={(e) => setApplicationSearch(e.target.value)}
+                          className="w-full"
+                          icon={<Search className="h-4 w-4" />}
+                        />
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-full md:w-[180px] justify-between">
+                            <span>Status</span>
+                            {applicationStatusFilter.length > 0 && (
+                              <Badge className="ml-2 bg-primary text-primary-foreground">
+                                {applicationStatusFilter.length}
+                              </Badge>
+                            )}
+                            <Filter className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[220px]">
+                          <DropdownMenuLabel>Application Status</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => setApplicationStatusFilter([])}
+                            className="justify-between"
+                          >
+                            Clear all
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('applied')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'applied']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'applied'));
+                              }
+                            }}
+                          >
+                            Applied
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('under_review')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'under_review']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'under_review'));
+                              }
+                            }}
+                          >
+                            Under Review
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('shortlisted')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'shortlisted']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'shortlisted'));
+                              }
+                            }}
+                          >
+                            Shortlisted
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('rejected')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'rejected']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'rejected'));
+                              }
+                            }}
+                          >
+                            Rejected
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('selected')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'selected']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'selected'));
+                              }
+                            }}
+                          >
+                            Selected
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('internship')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'internship']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'internship'));
+                              }
+                            }}
+                          >
+                            Internship
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={applicationStatusFilter.includes('ppo')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setApplicationStatusFilter([...applicationStatusFilter, 'ppo']);
+                              } else {
+                                setApplicationStatusFilter(applicationStatusFilter.filter(s => s !== 'ppo'));
+                              }
+                            }}
+                          >
+                            PPO
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={`w-full md:w-[180px] justify-start text-left font-normal ${!applicationDateFilter && "text-muted-foreground"}`}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {applicationDateFilter ? format(applicationDateFilter, "PPP") : <span>Application Date</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={applicationDateFilter}
+                            onSelect={setApplicationDateFilter}
+                            initialFocus
+                          />
+                          {applicationDateFilter && (
+                            <div className="p-3 border-t flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setApplicationDateFilter(undefined)}
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                      
+                      {renderMultiSelect('Course', courses, applicationCourseFilter, setApplicationCourseFilter)}
+                      {renderMultiSelect('Passing Year', passingYears, applicationPassingYearFilter, setApplicationPassingYearFilter)}
+                      {renderMultiSelect('Department', departments, applicationDepartmentFilter, setApplicationDepartmentFilter)}
+                      
+                      <div className="w-full md:w-[280px]">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-sm">Package Range: {packageRange[0]} - {packageRange[1]} LPA</span>
+                        </div>
+                        <Slider
+                          defaultValue={[minPackage, maxPackage]}
+                          value={packageRange}
+                          onValueChange={setPackageRange}
+                          min={minPackage}
+                          max={maxPackage}
+                          step={1}
+                          className="mb-3"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              {renderSortButton('student', 'Student', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>Details</TableHead>
+                            <TableHead>
+                              {renderSortButton('job', 'Job', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('company', 'Company', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('date', 'Date', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredApplications.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={7} className="text-center py-4">
+                                No applications match the filter criteria
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredApplications.map((app) => (
+                              <TableRow key={app.id}>
+                                <TableCell className="font-medium">
+                                  {app.student_profile ? `${app.student_profile.first_name} ${app.student_profile.last_name}` : 'Unknown'}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-sm">
+                                    <div>Course: {app.graduation_details?.course || 'N/A'}</div>
+                                    <div>Year: {app.graduation_details?.passing_year || 'N/A'}</div>
+                                    <div>Dept: {app.student_profile?.department || 'N/A'}</div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>{app.job?.title || 'N/A'}</TableCell>
+                                <TableCell>{app.job?.company_name || 'N/A'}</TableCell>
+                                <TableCell>{app.job?.package || 'N/A'}</TableCell>
+                                <TableCell>
+                                  {app.created_at ? format(new Date(app.created_at), 'MMM dd, yyyy') : 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {app.status === 'applied' && <Badge className="bg-blue-500">Applied</Badge>}
+                                  {app.status === 'under_review' && <Badge className="bg-purple-500">Under Review</Badge>}
+                                  {app.status === 'shortlisted' && <Badge className="bg-yellow-500">Shortlisted</Badge>}
+                                  {app.status === 'rejected' && <Badge className="bg-red-500">Rejected</Badge>}
+                                  {app.status === 'selected' && <Badge className="bg-green-500">Selected</Badge>}
+                                  {app.status === 'internship' && <Badge className="bg-teal-500">Internship</Badge>}
+                                  {app.status === 'ppo' && <Badge className="bg-indigo-500">PPO</Badge>}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Jobs Tab Content */}
+            <TabsContent value="jobs" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <CardTitle>Jobs Data</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CSVLink 
+                        data={getJobsCSVData()}
+                        filename={`jobs-report-${new Date().toISOString().split('T')[0]}.csv`}
+                        className="flex items-center gap-1 bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700"
+                      >
+                        <Download size={16} /> Export CSV
+                      </CSVLink>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px]">
+                        <Input
+                          placeholder="Search jobs..."
+                          value={jobSearch}
+                          onChange={(e) => setJobSearch(e.target.value)}
+                          className="w-full"
+                          icon={<Search className="h-4 w-4" />}
+                        />
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" className="w-full md:w-[180px] justify-between">
+                            <span>Status</span>
+                            {jobStatusFilter.length > 0 && (
+                              <Badge className="ml-2 bg-primary text-primary-foreground">
+                                {jobStatusFilter.length}
+                              </Badge>
+                            )}
+                            <Filter className="ml-2 h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[220px]">
+                          <DropdownMenuLabel>Job Status</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => setJobStatusFilter([])}
+                            className="justify-between"
+                          >
+                            Clear all
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem
+                            checked={jobStatusFilter.includes('active')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setJobStatusFilter([...jobStatusFilter, 'active']);
+                              } else {
+                                setJobStatusFilter(jobStatusFilter.filter(s => s !== 'active'));
+                              }
+                            }}
+                          >
+                            Active
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={jobStatusFilter.includes('closed')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setJobStatusFilter([...jobStatusFilter, 'closed']);
+                              } else {
+                                setJobStatusFilter(jobStatusFilter.filter(s => s !== 'closed'));
+                              }
+                            }}
+                          >
+                            Closed
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuCheckboxItem
+                            checked={jobStatusFilter.includes('draft')}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setJobStatusFilter([...jobStatusFilter, 'draft']);
+                              } else {
+                                setJobStatusFilter(jobStatusFilter.filter(s => s !== 'draft'));
+                              }
+                            }}
+                          >
+                            Draft
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={`w-full md:w-[180px] justify-start text-left font-normal ${!jobDeadlineFilter && "text-muted-foreground"}`}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {jobDeadlineFilter ? format(jobDeadlineFilter, "PPP") : <span>Deadline</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={jobDeadlineFilter}
+                            onSelect={setJobDeadlineFilter}
+                            initialFocus
+                          />
+                          {jobDeadlineFilter && (
+                            <div className="p-3 border-t flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setJobDeadlineFilter(undefined)}
+                              >
+                                Clear
+                              </Button>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                      
+                      {renderMultiSelect('Location', locations, jobLocationFilter, setJobLocationFilter)}
+                      
+                      <div className="w-full md:w-[280px]">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-sm">Selected Students: {selectedStudentsFilter[0]} - {selectedStudentsFilter[1]}</span>
+                        </div>
+                        <Slider
+                          defaultValue={[0, maxSelectedStudents]}
+                          value={selectedStudentsFilter}
+                          onValueChange={setSelectedStudentsFilter}
+                          min={0}
+                          max={maxSelectedStudents}
+                          step={1}
+                          className="mb-3"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>
+                              {renderSortButton('title', 'Job Title', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('company', 'Company', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('location', 'Location', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('package', 'Package', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('applications', 'Applications', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('selected', 'Selected', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('deadline', 'Deadline', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                            <TableHead>
+                              {renderSortButton('status', 'Status', jobSortField, setJobSortField, jobSortDirection, setJobSortDirection)}
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredJobs.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={8} className="text-center py-4">
+                                No jobs match the filter criteria
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredJobs.map((job) => (
+                              <TableRow key={job.id}>
+                                <TableCell className="font-medium">{job.title}</TableCell>
+                                <TableCell>{job.company_name}</TableCell>
+                                <TableCell>{job.location}</TableCell>
+                                <TableCell>{job.package}</TableCell>
+                                <TableCell>{job.application_count}</TableCell>
+                                <TableCell>{job.selected_count}</TableCell>
+                                <TableCell>
+                                  {job.application_deadline ? format(new Date(job.application_deadline), 'MMM dd, yyyy') : 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {job.status === 'active' && <Badge className="bg-green-500">Active</Badge>}
+                                  {job.status === 'closed' && <Badge className="bg-red-500">Closed</Badge>}
+                                  {job.status === 'draft' && <Badge className="bg-yellow-500">Draft</Badge>}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
+      </div>
+    </AdminLayout>
+  );
+};
+
+export default Reports;
