@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -23,7 +24,8 @@ import {
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle
+  DialogTitle,
+  DialogFooter
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -31,8 +33,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
-import { Loader2, Search, FileDown, Filter } from 'lucide-react';
+import { Loader2, Search, FileDown, Filter, CheckSquare, Square } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const statusColors: Record<JobApplicationStatus, string> = {
   'applied': 'bg-blue-100 text-blue-800',
@@ -65,6 +68,13 @@ const Applications = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<JobApplicationStatus>('applied');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  
+  // New state for batch operations
+  const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [batchStatus, setBatchStatus] = useState<JobApplicationStatus>('applied');
+  const [updatingBatchStatus, setUpdatingBatchStatus] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
   
   const { toast } = useToast();
   
@@ -122,6 +132,16 @@ const Applications = () => {
     
     setFilteredApplications(filtered);
   }, [searchTerm, statusFilter, applications]);
+  
+  useEffect(() => {
+    // When selectAll changes, update all visible applications accordingly
+    if (selectAll) {
+      const visibleIds = filteredApplications.map(app => app.id as string);
+      setSelectedApplicationIds(visibleIds);
+    } else {
+      setSelectedApplicationIds([]);
+    }
+  }, [selectAll, filteredApplications]);
   
   const handleOpenStatusDialog = (application: JobApplication) => {
     setSelectedApplication(application);
@@ -193,6 +213,103 @@ const Applications = () => {
       setUpdatingStatus(false);
     }
   };
+
+  // New function to handle batch update
+  const handleBatchUpdateStatus = async () => {
+    if (selectedApplicationIds.length === 0) return;
+    
+    try {
+      setUpdatingBatchStatus(true);
+      
+      const shouldFreezeProfiles = ['selected', 'internship', 'ppo', 'placement'].includes(batchStatus);
+      
+      // Get selected applications data
+      const { data: selectedApps, error: fetchError } = await supabase
+        .from('job_applications')
+        .select('id, student_id, status')
+        .in('id', selectedApplicationIds);
+      
+      if (fetchError) throw fetchError;
+      
+      // Update all selected applications
+      const { error: updateError } = await supabase
+        .from('job_applications')
+        .update({
+          status: batchStatus,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', selectedApplicationIds);
+      
+      if (updateError) throw updateError;
+      
+      if (shouldFreezeProfiles) {
+        // Get student IDs that need to be frozen (only those that are newly getting a status that freezes)
+        const studentIdsToFreeze = selectedApps
+          .filter(app => !['selected', 'internship', 'ppo', 'placement'].includes(app.status as string))
+          .map(app => app.student_id);
+        
+        if (studentIdsToFreeze.length > 0) {
+          // Freeze student profiles
+          const { error: freezeError } = await supabase
+            .from('student_profiles')
+            .update({
+              is_frozen: true,
+              updated_at: new Date().toISOString()
+            })
+            .in('id', studentIdsToFreeze);
+          
+          if (freezeError) throw freezeError;
+          
+          // Auto-reject other applications
+          for (const studentId of studentIdsToFreeze) {
+            const { error: rejectError } = await supabase
+              .from('job_applications')
+              .update({
+                status: 'rejected',
+                admin_notes: `Automatically rejected because student was ${batchStatus} for another position`,
+                updated_at: new Date().toISOString()
+              })
+              .eq('student_id', studentId)
+              .not('id', 'in', selectedApplicationIds)
+              .not('status', 'in', '("selected","internship","ppo","placement","rejected")');
+            
+            if (rejectError) {
+              console.error(`Error rejecting other applications for student ${studentId}:`, rejectError);
+            }
+          }
+        }
+      }
+      
+      toast({
+        title: 'Success',
+        description: `Updated ${selectedApplicationIds.length} applications to "${batchStatus.replace('_', ' ')}"`
+      });
+      
+      fetchApplications();
+      setBatchDialogOpen(false);
+      setSelectedApplicationIds([]);
+      setSelectAll(false);
+    } catch (error) {
+      console.error('Error updating application statuses:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update application statuses',
+        variant: 'destructive',
+      });
+    } finally {
+      setUpdatingBatchStatus(false);
+    }
+  };
+  
+  const toggleApplicationSelection = (id: string) => {
+    setSelectedApplicationIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(appId => appId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
   
   const getCSVData = () => {
     return filteredApplications.map(app => ({
@@ -213,14 +330,26 @@ const Applications = () => {
         <div className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-2xl font-bold">Job Applications</h1>
           
-          <CSVLink 
-            data={getCSVData()} 
-            filename={'job-applications.csv'} 
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            <FileDown className="mr-2 h-4 w-4" />
-            Export to CSV
-          </CSVLink>
+          <div className="flex items-center space-x-2">
+            {selectedApplicationIds.length > 0 && (
+              <Button 
+                onClick={() => setBatchDialogOpen(true)}
+                className="mr-2"
+                variant="default"
+              >
+                Update {selectedApplicationIds.length} Selected
+              </Button>
+            )}
+          
+            <CSVLink 
+              data={getCSVData()} 
+              filename={'job-applications.csv'} 
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Export to CSV
+            </CSVLink>
+          </div>
         </div>
         
         <div className="flex flex-col md:flex-row gap-4">
@@ -269,6 +398,13 @@ const Applications = () => {
                   <TableCaption>List of all job applications</TableCaption>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox 
+                          checked={selectAll} 
+                          onCheckedChange={() => setSelectAll(!selectAll)}
+                          aria-label="Select all applications"
+                        />
+                      </TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Job</TableHead>
                       <TableHead>Company</TableHead>
@@ -280,13 +416,23 @@ const Applications = () => {
                   <TableBody>
                     {filteredApplications.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={7} className="text-center py-6 text-gray-500">
                           No applications found
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredApplications.map((application) => (
-                        <TableRow key={application.id}>
+                        <TableRow 
+                          key={application.id}
+                          className={selectedApplicationIds.includes(application.id as string) ? "bg-gray-50" : ""}
+                        >
+                          <TableCell>
+                            <Checkbox 
+                              checked={selectedApplicationIds.includes(application.id as string)}
+                              onCheckedChange={() => toggleApplicationSelection(application.id as string)}
+                              aria-label={`Select application for ${application.student_profile?.first_name}`}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div>
                               <div className="font-medium">
@@ -337,6 +483,7 @@ const Applications = () => {
         )}
       </div>
       
+      {/* Single Application Status Update Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -420,6 +567,89 @@ const Applications = () => {
               )}
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Batch Update Dialog */}
+      <Dialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Batch Update Application Status</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="mb-4">
+              <h3 className="font-medium">
+                Update {selectedApplicationIds.length} selected applications
+              </h3>
+              <p className="text-sm text-gray-600">
+                This will change the status of all selected applications
+              </p>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Set New Status</Label>
+                <RadioGroup 
+                  value={batchStatus} 
+                  onValueChange={(value) => setBatchStatus(value as JobApplicationStatus)}
+                  className="flex flex-col space-y-2"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="applied" id="batch-applied" />
+                    <Label htmlFor="batch-applied">Applied</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="under_review" id="batch-under_review" />
+                    <Label htmlFor="batch-under_review">Under Review</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="shortlisted" id="batch-shortlisted" />
+                    <Label htmlFor="batch-shortlisted">Shortlisted</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="rejected" id="batch-rejected" />
+                    <Label htmlFor="batch-rejected">Rejected</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="selected" id="batch-selected" />
+                    <Label htmlFor="batch-selected">Selected</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="internship" id="batch-internship" />
+                    <Label htmlFor="batch-internship">Internship</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="ppo" id="batch-ppo" />
+                    <Label htmlFor="batch-ppo">PPO</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="placement" id="batch-placement" />
+                    <Label htmlFor="batch-placement">Placement</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBatchUpdateStatus}
+              disabled={updatingBatchStatus}
+            >
+              {updatingBatchStatus ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                'Update All Selected'
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AdminLayout>
