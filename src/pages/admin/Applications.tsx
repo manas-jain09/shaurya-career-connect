@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -32,10 +33,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
-import { Loader2, Search, FileDown, Filter, CheckSquare, Square, Upload, FileText } from 'lucide-react';
+import { Loader2, Search, FileDown, Filter, CheckSquare, Square } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { uploadOfferLetter } from '@/utils/fileUpload';
 
 const statusColors: Record<JobApplicationStatus, string> = {
   'applied': 'bg-blue-100 text-blue-800',
@@ -69,16 +69,12 @@ const Applications = () => {
   const [newStatus, setNewStatus] = useState<JobApplicationStatus>('applied');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   
+  // New state for batch operations
   const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [batchStatus, setBatchStatus] = useState<JobApplicationStatus>('applied');
   const [updatingBatchStatus, setUpdatingBatchStatus] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
-  
-  const [offerLetterFile, setOfferLetterFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [offerLetterDialogOpen, setOfferLetterDialogOpen] = useState(false);
-  const [selectedOfferLetterApp, setSelectedOfferLetterApp] = useState<JobApplication | null>(null);
   
   const { toast } = useToast();
   
@@ -138,6 +134,7 @@ const Applications = () => {
   }, [searchTerm, statusFilter, applications]);
   
   useEffect(() => {
+    // When selectAll changes, update all visible applications accordingly
     if (selectAll) {
       const visibleIds = filteredApplications.map(app => app.id as string);
       setSelectedApplicationIds(visibleIds);
@@ -217,6 +214,7 @@ const Applications = () => {
     }
   };
 
+  // New function to handle batch update
   const handleBatchUpdateStatus = async () => {
     if (selectedApplicationIds.length === 0) return;
     
@@ -225,6 +223,7 @@ const Applications = () => {
       
       const shouldFreezeProfiles = ['selected', 'internship', 'ppo', 'placement'].includes(batchStatus);
       
+      // Get selected applications data
       const { data: selectedApps, error: fetchError } = await supabase
         .from('job_applications')
         .select('id, student_id, status')
@@ -232,6 +231,7 @@ const Applications = () => {
       
       if (fetchError) throw fetchError;
       
+      // Update all selected applications
       const { error: updateError } = await supabase
         .from('job_applications')
         .update({
@@ -243,11 +243,13 @@ const Applications = () => {
       if (updateError) throw updateError;
       
       if (shouldFreezeProfiles) {
+        // Get student IDs that need to be frozen (only those that are newly getting a status that freezes)
         const studentIdsToFreeze = selectedApps
           .filter(app => !['selected', 'internship', 'ppo', 'placement'].includes(app.status as string))
           .map(app => app.student_id);
         
         if (studentIdsToFreeze.length > 0) {
+          // Freeze student profiles
           const { error: freezeError } = await supabase
             .from('student_profiles')
             .update({
@@ -258,6 +260,7 @@ const Applications = () => {
           
           if (freezeError) throw freezeError;
           
+          // Auto-reject other applications
           for (const studentId of studentIdsToFreeze) {
             const { error: rejectError } = await supabase
               .from('job_applications')
@@ -319,63 +322,6 @@ const Applications = () => {
       'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
       'Applied Date': new Date(app.created_at || '').toLocaleDateString()
     }));
-  };
-  
-  const handleOpenOfferLetterDialog = (application: JobApplication) => {
-    setSelectedOfferLetterApp(application);
-    setOfferLetterDialogOpen(true);
-  };
-  
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      setOfferLetterFile(event.target.files[0]);
-    }
-  };
-  
-  const handleUploadOfferLetter = async () => {
-    if (!selectedOfferLetterApp || !offerLetterFile) return;
-    
-    try {
-      setIsUploading(true);
-      
-      const fileUrl = await uploadOfferLetter(
-        offerLetterFile,
-        selectedOfferLetterApp.student_id,
-        selectedOfferLetterApp.job_id
-      );
-      
-      if (!fileUrl) {
-        throw new Error('Failed to upload file');
-      }
-      
-      const { error } = await supabase
-        .from('job_applications')
-        .update({
-          offer_letter_url: fileUrl,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedOfferLetterApp.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: 'Success',
-        description: 'Offer letter uploaded successfully'
-      });
-      
-      fetchApplications();
-      setOfferLetterDialogOpen(false);
-      setOfferLetterFile(null);
-    } catch (error) {
-      console.error('Error uploading offer letter:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to upload offer letter',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploading(false);
-    }
   };
   
   return (
@@ -464,14 +410,13 @@ const Applications = () => {
                       <TableHead>Company</TableHead>
                       <TableHead>Applied On</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Offer Letter</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredApplications.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={7} className="text-center py-6 text-gray-500">
                           No applications found
                         </TableCell>
                       </TableRow>
@@ -518,36 +463,14 @@ const Applications = () => {
                           <TableCell>
                             <StatusBadge status={application.status as JobApplicationStatus} />
                           </TableCell>
-                          <TableCell>
-                            {application.offer_letter_url ? (
-                              <Badge variant="outline" className="bg-green-50 text-green-800 border-green-300">
-                                <FileText className="h-3 w-3 mr-1" />
-                                Uploaded
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-gray-50 text-gray-800 border-gray-300">
-                                None
-                              </Badge>
-                            )}
-                          </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleOpenStatusDialog(application)}
-                              >
-                                Update Status
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => handleOpenOfferLetterDialog(application)}
-                              >
-                                <Upload className="h-4 w-4 mr-1" />
-                                Offer Letter
-                              </Button>
-                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleOpenStatusDialog(application)}
+                            >
+                              Update Status
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -560,6 +483,7 @@ const Applications = () => {
         )}
       </div>
       
+      {/* Single Application Status Update Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -646,6 +570,7 @@ const Applications = () => {
         </DialogContent>
       </Dialog>
       
+      {/* Batch Update Dialog */}
       <Dialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -722,61 +647,6 @@ const Applications = () => {
                 </>
               ) : (
                 'Update All Selected'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      <Dialog open={offerLetterDialogOpen} onOpenChange={setOfferLetterDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Upload Offer Letter</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {selectedOfferLetterApp && (
-              <div className="mb-4">
-                <h3 className="font-medium">
-                  {selectedOfferLetterApp.student_profile?.first_name} {selectedOfferLetterApp.student_profile?.last_name}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Application for {selectedOfferLetterApp.job?.title} at {selectedOfferLetterApp.job?.company_name}
-                </p>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="offerLetter">Select Offer Letter (PDF preferred)</Label>
-              <Input
-                id="offerLetter"
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={handleFileChange}
-              />
-              {selectedOfferLetterApp?.offer_letter_url && (
-                <div className="mt-2 text-sm text-amber-600">
-                  Note: Uploading a new file will replace the existing offer letter.
-                </div>
-              )}
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOfferLetterDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleUploadOfferLetter}
-              disabled={isUploading || !offerLetterFile}
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                'Upload Offer Letter'
               )}
             </Button>
           </DialogFooter>

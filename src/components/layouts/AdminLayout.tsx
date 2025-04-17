@@ -9,16 +9,12 @@ import {
   FileCheck, 
   BarChart, 
   LogOut,
-  ClipboardList,
-  Bell
+  ClipboardList
 } from 'lucide-react';
-import { useNotifications } from '@/hooks/useNotifications';
-import { Badge } from '@/components/ui/badge';
 
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const { unreadCount } = useNotifications();
 
   const navLinks = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: Home },
@@ -27,7 +23,6 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Applications', path: '/admin/applications', icon: ClipboardList },
     { name: 'Students', path: '/admin/students', icon: Users },
     { name: 'Reports', path: '/admin/reports', icon: BarChart },
-    { name: 'Notifications', path: '/admin/notifications', icon: Bell, badge: unreadCount > 0 ? unreadCount : null },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -70,10 +65,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       }`}
                     >
                       <link.icon size={18} className="mr-2" />
-                      <span>{link.name}</span>
-                      {link.badge && (
-                        <Badge className="ml-auto bg-red-500">{link.badge}</Badge>
-                      )}
+                      {link.name}
                     </Link>
                   </li>
                 ))}

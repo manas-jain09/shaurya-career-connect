@@ -111,7 +111,6 @@ export interface JobApplication {
   admin_notes?: string;
   created_at?: string;
   updated_at?: string;
-  offer_letter_url?: string;
   job?: {
     title: string;
     company_name: string;

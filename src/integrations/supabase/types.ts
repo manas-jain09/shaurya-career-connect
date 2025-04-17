@@ -171,7 +171,6 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
-          offer_letter_url: string | null
           status: string
           student_id: string
           updated_at: string
@@ -181,7 +180,6 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
-          offer_letter_url?: string | null
           status?: string
           student_id: string
           updated_at?: string
@@ -191,7 +189,6 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
-          offer_letter_url?: string | null
           status?: string
           student_id?: string
           updated_at?: string

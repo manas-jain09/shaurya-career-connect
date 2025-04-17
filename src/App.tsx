@@ -1,56 +1,105 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import LoginPage from './pages/Login';
-import StudentRegistrationPage from './pages/Register';
-import AdminRegistrationPage from './pages/Register';
-import StudentDashboard from './pages/student/Dashboard';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
+import Index from './pages/Index';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import AdminDashboard from './pages/admin/Dashboard';
-import Profile from './pages/student/Profile';
-import Jobs from './pages/student/Jobs';
-import Applications from './pages/student/Applications';
 import Verification from './pages/admin/Verification';
 import VerificationDetail from './pages/admin/VerificationDetail';
-import JobManagement from './pages/admin/Jobs';
-import JobDetail from './pages/admin/Jobs';
-import StudentManagement from './pages/admin/Students';
+import Jobs from './pages/admin/Jobs';
+import Students from './pages/admin/Students';
 import Reports from './pages/admin/Reports';
-import ApplicationsManagement from './pages/admin/Applications';
-import Notifications from './pages/admin/Notifications';
+import StudentDashboard from './pages/student/Dashboard';
+import Profile from './pages/student/Profile';
+import StudentJobs from './pages/student/Jobs';
+import StudentApplications from './pages/student/Applications';
+import Notifications from './pages/student/Notifications';
+import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
+import Applications from './pages/admin/Applications';
 
 function App() {
+  const theme = localStorage.getItem('theme') || 'light';
+
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register/student" element={<StudentRegistrationPage />} />
-          <Route path="/register/admin" element={<AdminRegistrationPage />} />
-          <Route path="/unauthorized" element={<div className="text-center mt-10">Unauthorized</div>} />
-
-          {/* Student Routes */}
-          <Route path="/student/dashboard" element={<ProtectedRoute requiredRole="student"><StudentDashboard /></ProtectedRoute>} />
-          <Route path="/student/profile" element={<ProtectedRoute requiredRole="student"><Profile /></ProtectedRoute>} />
-          <Route path="/student/jobs" element={<ProtectedRoute requiredRole="student"><Jobs /></ProtectedRoute>} />
-          <Route path="/student/applications" element={<ProtectedRoute requiredRole="student"><Applications /></ProtectedRoute>} />
-
-          {/* Admin Routes */}
-          <Route path="/admin/dashboard" element={<ProtectedRoute requiredRole="admin"><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/verification" element={<ProtectedRoute requiredRole="admin"><Verification /></ProtectedRoute>} />
-          <Route path="/admin/verification/:id" element={<ProtectedRoute requiredRole="admin"><VerificationDetail /></ProtectedRoute>} />
-          <Route path="/admin/jobs" element={<ProtectedRoute requiredRole="admin"><JobManagement /></ProtectedRoute>} />
-          <Route path="/admin/jobs/:id" element={<ProtectedRoute requiredRole="admin"><JobDetail /></ProtectedRoute>} />
-          <Route path="/admin/students" element={<ProtectedRoute requiredRole="admin"><StudentManagement /></ProtectedRoute>} />
-          <Route path="/admin/reports" element={<ProtectedRoute requiredRole="admin"><Reports /></ProtectedRoute>} />
-          <Route path="/admin/applications" element={<ProtectedRoute requiredRole="admin"><ApplicationsManagement /></ProtectedRoute>} />
-          <Route path="/admin/notifications" element={<ProtectedRoute requiredRole="admin"><Notifications /></ProtectedRoute>} />
-
-          <Route path="/" element={<Navigate to="/login" />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <ThemeProvider initialTheme={theme as 'light' | 'dark'}>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            
+            <Route path="/admin/dashboard" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/verification" element={
+              <ProtectedRoute requiredRole="admin">
+                <Verification />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/verification/:id" element={
+              <ProtectedRoute requiredRole="admin">
+                <VerificationDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/jobs" element={
+              <ProtectedRoute requiredRole="admin">
+                <Jobs />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/applications" element={
+              <ProtectedRoute requiredRole="admin">
+                <Applications />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/students" element={
+              <ProtectedRoute requiredRole="admin">
+                <Students />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/reports" element={
+              <ProtectedRoute requiredRole="admin">
+                <Reports />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/student/dashboard" element={
+              <ProtectedRoute requiredRole="student">
+                <StudentDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/profile" element={
+              <ProtectedRoute requiredRole="student">
+                <Profile />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/jobs" element={
+              <ProtectedRoute requiredRole="student">
+                <StudentJobs />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/applications" element={
+              <ProtectedRoute requiredRole="student">
+                <StudentApplications />
+              </ProtectedRoute>
+            } />
+            <Route path="/student/notifications" element={
+              <ProtectedRoute requiredRole="student">
+                <Notifications />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Router>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

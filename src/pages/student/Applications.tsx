@@ -3,12 +3,11 @@ import React from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, GraduationCap, Award, BarChart3, Download, FileText } from 'lucide-react';
+import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, GraduationCap, Award, BarChart3 } from 'lucide-react';
 
 const statusDisplayConfig = {
   applied: {
@@ -68,10 +67,6 @@ const Applications = () => {
       </StudentLayout>
     );
   }
-
-  const handleDownloadOfferLetter = (url: string) => {
-    window.open(url, '_blank');
-  };
 
   return (
     <StudentLayout>
@@ -208,19 +203,6 @@ const Applications = () => {
                           <p className="text-sm text-gray-500">Applied On</p>
                           <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
                         </div>
-                        
-                        {application.offer_letter_url && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="flex items-center gap-1 text-green-600 border-green-200 hover:bg-green-50"
-                            onClick={() => handleDownloadOfferLetter(application.offer_letter_url as string)}
-                          >
-                            <FileText className="h-4 w-4" />
-                            <Download className="h-4 w-4" />
-                            Download Offer
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </div>
