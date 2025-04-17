@@ -43,6 +43,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { OfferLetterUpload } from '@/components/company/OfferLetterUpload';
 
 const Applications = () => {
   const { user } = useAuth();
