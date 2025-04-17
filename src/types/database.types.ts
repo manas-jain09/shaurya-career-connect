@@ -19,6 +19,7 @@ export interface StudentProfile {
   department?: string;
   is_frozen?: boolean;
   is_eligible?: boolean;
+  is_selected?: boolean;
 }
 
 export interface ClassXDetails {
@@ -96,6 +97,8 @@ export interface JobPosting {
   status: JobPostingStatus;
   created_at?: string;
   updated_at?: string;
+  application_count?: number;
+  selected_count?: number;
 }
 
 export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected' | 'internship' | 'ppo' | 'placement';
