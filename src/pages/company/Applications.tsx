@@ -87,51 +87,30 @@ const Applications = () => {
       const jobIds = jobsData.map(job => job.id);
       console.log("Job IDs to fetch applications for:", jobIds);
       
-      // Fix the query to use properly nested joins instead of relying on column naming
+      // Fixed the query syntax - the asterisk needs to be a string
       const { data, error } = await supabase
         .from('job_applications')
         .select(`
-          *,
+          id, 
+          job_id,
+          student_id,
+          status,
+          admin_notes,
+          created_at,
+          updated_at,
+          offer_letter_url,
           job:job_id (
             title,
             company_name,
             location,
             package
           ),
-          student_profile:student_profiles!student_id (
+          student_profile:student_id (
             first_name,
             last_name,
             department,
             phone,
             is_verified
-          ),
-          graduation_details:graduation_details!student_id (
-            college_name,
-            course,
-            passing_year,
-            marks,
-            is_cgpa,
-            cgpa_scale,
-            has_backlog
-          ),
-          class_x_details:class_x_details!student_id (
-            school_name,
-            board,
-            marks,
-            is_cgpa,
-            cgpa_scale,
-            passing_year
-          ),
-          class_xii_details:class_xii_details!student_id (
-            school_name,
-            board,
-            marks,
-            is_cgpa,
-            cgpa_scale,
-            passing_year
-          ),
-          resume:resumes!student_id (
-            file_url
           )
         `)
         .in('job_id', jobIds)
@@ -147,14 +126,10 @@ const Applications = () => {
       // Process and sanitize the data to match our interface
       const sanitizedData: JobApplication[] = (data || []).map((item: any) => {
         console.log("Processing application item:", item.id);
-        // Handle any potentially missing nested objects or error objects
         return {
           ...item,
           student_profile: item.student_profile || null,
-          graduation_details: item.graduation_details && !item.graduation_details.error ? item.graduation_details : null,
-          class_x_details: item.class_x_details && !item.class_x_details.error ? item.class_x_details : null,
-          class_xii_details: item.class_xii_details && !item.class_xii_details.error ? item.class_xii_details : null,
-          resume: item.resume && !item.resume.error ? item.resume : null
+          job: item.job || null
         };
       });
       
@@ -172,8 +147,54 @@ const Applications = () => {
     fetchApplications();
   }, [user, sortField, sortOrder]);
 
-  const handleViewProfile = (application: JobApplication) => {
-    setSelectedStudent(application);
+  const handleViewProfile = async (application: JobApplication) => {
+    try {
+      // Get the full application details including related education records
+      const studentId = application.student_id;
+      
+      // Fetch graduation details
+      const { data: gradData, error: gradError } = await supabase
+        .from('graduation_details')
+        .select('*')
+        .eq('student_id', studentId)
+        .maybeSingle();
+        
+      // Fetch class X details  
+      const { data: classXData, error: classXError } = await supabase
+        .from('class_x_details')
+        .select('*')
+        .eq('student_id', studentId)
+        .maybeSingle();
+        
+      // Fetch class XII details
+      const { data: classXIIData, error: classXIIError } = await supabase
+        .from('class_xii_details')
+        .select('*')
+        .eq('student_id', studentId)
+        .maybeSingle();
+        
+      // Fetch resume
+      const { data: resumeData, error: resumeError } = await supabase
+        .from('resumes')
+        .select('*')
+        .eq('student_id', studentId)
+        .maybeSingle();
+      
+      // Create a complete application object with all details
+      const completeApplication: JobApplication = {
+        ...application,
+        graduation_details: gradError ? null : gradData,
+        class_x_details: classXError ? null : classXData,
+        class_xii_details: classXIIError ? null : classXIIData,
+        resume: resumeError ? null : resumeData
+      };
+      
+      setSelectedStudent(completeApplication);
+    } catch (error) {
+      console.error('Error fetching student details:', error);
+      toast.error('Failed to load student details');
+      setSelectedStudent(application);
+    }
   };
 
   const renderStudentDetails = () => {
