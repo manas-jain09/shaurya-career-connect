@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,7 +72,7 @@ const Applications = () => {
       
       const jobIds = jobsData.map(job => job.id);
       
-      // Now get all applications for these jobs
+      // Now get all applications with expanded details
       const { data, error } = await supabase
         .from('job_applications')
         .select(`
@@ -88,7 +87,36 @@ const Applications = () => {
             first_name,
             last_name,
             department,
-            phone
+            phone,
+            is_verified
+          ),
+          graduation_details:student_id (
+            college_name,
+            course,
+            passing_year,
+            marks,
+            is_cgpa,
+            cgpa_scale,
+            has_backlog
+          ),
+          class_x_details:student_id (
+            school_name,
+            board,
+            marks,
+            is_cgpa,
+            cgpa_scale,
+            passing_year
+          ),
+          class_xii_details:student_id (
+            school_name,
+            board,
+            marks,
+            is_cgpa,
+            cgpa_scale,
+            passing_year
+          ),
+          resume:student_id (
+            file_url
           )
         `)
         .in('job_id', jobIds)
@@ -109,36 +137,182 @@ const Applications = () => {
     fetchApplications();
   }, [user, sortField, sortOrder]);
 
-  const handleViewProfile = async (application: JobApplication) => {
+  const handleViewProfile = (application: JobApplication) => {
     setSelectedStudent(application);
-    
-    // Fetch additional details
-    if (application.student_id) {
-      try {
-        // Fetch graduation details
-        const { data: graduationData, error: gradError } = await supabase
-          .from('graduation_details')
-          .select('*')
-          .eq('student_id', application.student_id)
-          .single();
-          
-        if (!gradError && graduationData) {
-          // Update application with graduation details
-          setSelectedStudent(prev => {
-            if (!prev) return null;
-            return {
-              ...prev,
-              graduation_details: graduationData
-            };
-          });
-        }
-        
-        // Could fetch more details here (Class X, Class XII, etc.)
-        
-      } catch (error) {
-        console.error('Error fetching student details:', error);
-      }
-    }
+  };
+
+  const renderStudentDetails = () => {
+    if (!selectedStudent) return null;
+
+    return (
+      <div className="mt-4 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Personal Information</h3>
+            <div className="space-y-2">
+              <div>
+                <span className="font-medium">Name: </span>
+                <span>{selectedStudent.student_profile?.first_name} {selectedStudent.student_profile?.last_name}</span>
+              </div>
+              <div>
+                <span className="font-medium">Department: </span>
+                <span>{selectedStudent.student_profile?.department || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Phone: </span>
+                <span>{selectedStudent.student_profile?.phone || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Class X Details</h3>
+            <div className="space-y-2">
+              <div>
+                <span className="font-medium">School: </span>
+                <span>{selectedStudent.class_x_details?.school_name || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Board: </span>
+                <span>{selectedStudent.class_x_details?.board || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Marks: </span>
+                <span>
+                  {selectedStudent.class_x_details?.marks || 'N/A'}
+                  {selectedStudent.class_x_details?.is_cgpa ? 
+                    ` CGPA${selectedStudent.class_x_details?.cgpa_scale ? ` (out of ${selectedStudent.class_x_details.cgpa_scale})` : ''}` : 
+                    '%'
+                  }
+                </span>
+              </div>
+              <div>
+                <span className="font-medium">Passing Year: </span>
+                <span>{selectedStudent.class_x_details?.passing_year || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Class XII Details</h3>
+            <div className="space-y-2">
+              <div>
+                <span className="font-medium">School: </span>
+                <span>{selectedStudent.class_xii_details?.school_name || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Board: </span>
+                <span>{selectedStudent.class_xii_details?.board || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Marks: </span>
+                <span>
+                  {selectedStudent.class_xii_details?.marks || 'N/A'}
+                  {selectedStudent.class_xii_details?.is_cgpa ? 
+                    ` CGPA${selectedStudent.class_xii_details?.cgpa_scale ? ` (out of ${selectedStudent.class_xii_details.cgpa_scale})` : ''}` : 
+                    '%'
+                  }
+                </span>
+              </div>
+              <div>
+                <span className="font-medium">Passing Year: </span>
+                <span>{selectedStudent.class_xii_details?.passing_year || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Graduation Details</h3>
+            <div className="space-y-2">
+              <div>
+                <span className="font-medium">College: </span>
+                <span>{selectedStudent.graduation_details?.college_name || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Course: </span>
+                <span>{selectedStudent.graduation_details?.course || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Marks: </span>
+                <span>
+                  {selectedStudent.graduation_details?.marks || 'N/A'}
+                  {selectedStudent.graduation_details?.is_cgpa ? 
+                    ` CGPA${selectedStudent.graduation_details?.cgpa_scale ? ` (out of ${selectedStudent.graduation_details.cgpa_scale})` : ''}` : 
+                    '%'
+                  }
+                </span>
+              </div>
+              <div>
+                <span className="font-medium">Passing Year: </span>
+                <span>{selectedStudent.graduation_details?.passing_year || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="font-medium">Backlog: </span>
+                <span>{selectedStudent.graduation_details?.has_backlog ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {selectedStudent.resume?.file_url && (
+          <div className="border-t pt-4">
+            <h3 className="text-lg font-semibold mb-2">Resume</h3>
+            <Button 
+              variant="outline" 
+              onClick={() => window.open(selectedStudent.resume?.file_url, '_blank')}
+            >
+              <Download size={16} className="mr-2" /> Download Resume
+            </Button>
+          </div>
+        )}
+
+        <div className="border-t pt-4">
+          <h3 className="text-lg font-semibold mb-3">Update Application Status</h3>
+          <RadioGroup 
+            value={selectedStudent.status} 
+            onValueChange={(value) => {
+              if (selectedStudent.id) {
+                updateApplicationStatus(selectedStudent.id, value as JobApplicationStatus);
+              }
+            }}
+            className="grid grid-cols-2 gap-2"
+          >
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="applied" id="applied" />
+              <Label htmlFor="applied">Applied</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="under_review" id="under_review" />
+              <Label htmlFor="under_review">Under Review</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="shortlisted" id="shortlisted" />
+              <Label htmlFor="shortlisted">Shortlisted</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="selected" id="selected" />
+              <Label htmlFor="selected">Selected</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="rejected" id="rejected" />
+              <Label htmlFor="rejected">Rejected</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="internship" id="internship" />
+              <Label htmlFor="internship">Internship</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="ppo" id="ppo" />
+              <Label htmlFor="ppo">PPO</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="placement" id="placement" />
+              <Label htmlFor="placement">Placement</Label>
+            </div>
+          </RadioGroup>
+        </div>
+      </div>
+    );
   };
 
   const updateApplicationStatus = async (applicationId: string, newStatus: JobApplicationStatus) => {
@@ -150,7 +324,6 @@ const Applications = () => {
         
       if (error) throw error;
       
-      // Update UI without refetching
       setApplications(prev => 
         prev.map(app => 
           app.id === applicationId ? { ...app, status: newStatus } : app
@@ -205,17 +378,14 @@ const Applications = () => {
   };
 
   const filteredApplications = applications.filter(app => {
-    // Filter by search term
     const studentName = `${app.student_profile?.first_name || ''} ${app.student_profile?.last_name || ''}`;
     const searchMatch = 
       studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (app.job?.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (app.student_profile?.department || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    // Filter by job
     const jobMatch = jobFilter === 'all' || app.job_id === jobFilter;
     
-    // Filter by status
     const statusMatch = statusFilter === 'all' || app.status === statusFilter;
     
     return searchMatch && jobMatch && statusMatch;
@@ -339,106 +509,13 @@ const Applications = () => {
                               <Eye size={16} className="mr-1" /> View
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-3xl">
+                          <DialogContent className="max-w-4xl">
                             <DialogHeader>
                               <DialogTitle>
                                 Student Profile: {selectedStudent?.student_profile?.first_name} {selectedStudent?.student_profile?.last_name}
                               </DialogTitle>
                             </DialogHeader>
-                            {selectedStudent && (
-                              <div className="mt-4 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <div>
-                                    <h3 className="text-lg font-semibold mb-2">Personal Information</h3>
-                                    <div className="space-y-2">
-                                      <div>
-                                        <span className="font-medium">Department: </span>
-                                        <span>{selectedStudent.student_profile?.department || 'N/A'}</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Phone: </span>
-                                        <span>{selectedStudent.student_profile?.phone || 'N/A'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div>
-                                    <h3 className="text-lg font-semibold mb-2">Education</h3>
-                                    <div className="space-y-2">
-                                      <div>
-                                        <span className="font-medium">College: </span>
-                                        <span>{selectedStudent.graduation_details?.college_name || 'N/A'}</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Course: </span>
-                                        <span>{selectedStudent.graduation_details?.course || 'N/A'}</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Passing Year: </span>
-                                        <span>{selectedStudent.graduation_details?.passing_year || 'N/A'}</span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Marks: </span>
-                                        <span>
-                                          {selectedStudent.graduation_details?.marks || 'N/A'}
-                                          {selectedStudent.graduation_details?.is_cgpa ? ` CGPA${selectedStudent.graduation_details?.cgpa_scale ? ` (out of ${selectedStudent.graduation_details.cgpa_scale})` : ''}` : '%'}
-                                        </span>
-                                      </div>
-                                      <div>
-                                        <span className="font-medium">Backlog: </span>
-                                        <span>{selectedStudent.graduation_details?.has_backlog ? 'Yes' : 'No'}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                <div className="border-t pt-4">
-                                  <h3 className="text-lg font-semibold mb-3">Update Application Status</h3>
-                                  <RadioGroup 
-                                    value={selectedStudent.status} 
-                                    onValueChange={(value) => {
-                                      if (selectedStudent.id) {
-                                        updateApplicationStatus(selectedStudent.id, value as JobApplicationStatus);
-                                      }
-                                    }}
-                                    className="grid grid-cols-2 gap-2"
-                                  >
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="applied" id="applied" />
-                                      <Label htmlFor="applied">Applied</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="under_review" id="under_review" />
-                                      <Label htmlFor="under_review">Under Review</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="shortlisted" id="shortlisted" />
-                                      <Label htmlFor="shortlisted">Shortlisted</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="selected" id="selected" />
-                                      <Label htmlFor="selected">Selected</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="rejected" id="rejected" />
-                                      <Label htmlFor="rejected">Rejected</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="internship" id="internship" />
-                                      <Label htmlFor="internship">Internship</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="ppo" id="ppo" />
-                                      <Label htmlFor="ppo">PPO</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                      <RadioGroupItem value="placement" id="placement" />
-                                      <Label htmlFor="placement">Placement</Label>
-                                    </div>
-                                  </RadioGroup>
-                                </div>
-                              </div>
-                            )}
+                            {renderStudentDetails()}
                           </DialogContent>
                         </Dialog>
                         

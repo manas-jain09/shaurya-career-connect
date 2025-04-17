@@ -127,9 +127,32 @@ export interface JobApplication {
     department?: string;
   };
   graduation_details?: {
+    college_name?: string;
     course?: string;
     passing_year?: number;
-    college_name?: string;
+    marks?: number;
+    is_cgpa?: boolean;
+    cgpa_scale?: number;
+    has_backlog?: boolean;
+  };
+  class_x_details?: {
+    school_name: string;
+    board: string;
+    marks: number;
+    is_cgpa: boolean;
+    cgpa_scale?: number;
+    passing_year: number;
+  };
+  class_xii_details?: {
+    school_name: string;
+    board: string;
+    marks: number;
+    is_cgpa: boolean;
+    cgpa_scale?: number;
+    passing_year: number;
+  };
+  resume?: {
+    file_url: string;
   };
 }
 
