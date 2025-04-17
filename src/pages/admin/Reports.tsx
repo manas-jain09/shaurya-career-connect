@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '@/components/layouts/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -756,58 +755,35 @@ const Reports = () => {
   );
 
   // CSV Export Functions
-  const getStudentsCSVData = () => {
-    return filteredStudents.map(student => ({
-      'Name': `${student.first_name} ${student.last_name}`,
-      'Phone': student.phone,
-      'Email': student.email,
-      'Department': student.department || 'N/A',
-      'College': student.graduation?.college_name || 'N/A',
-      'Course': student.graduation?.course || 'N/A',
-      'Passing Year': student.graduation?.passing_year || 'N/A',
-      'Marks': student.graduation?.marks || 'N/A',
-      'Is CGPA': student.graduation?.is_cgpa ? 'Yes' : 'No',
-      'Verified': student.is_verified ? 'Yes' : 'No',
-      'Verification Status': student.verification_status,
-      'Flagged Sections': student.flagged_sections ? student.flagged_sections.join(', ') : 'None',
-      'Blocked': student.is_blocked ? 'Yes' : 'No',
-      'Selected': student.is_selected ? 'Yes' : 'No'
+  const prepareDataForCSV = (applications) => {
+    return applications.map((app) => ({
+      'Student Name': `${app.student_profile?.first_name || ''} ${app.student_profile?.last_name || ''}`,
+      'Student Phone': app.student_profile?.phone || '',
+      'Student Department': app.student_profile?.department || '',
+      'Course': app.graduation_details?.course || '',
+      'Passing Year': app.graduation_details?.passing_year || '',
+      'College': app.graduation_details?.college_name || '',
+      'Job Title': app.job?.title || '',
+      'Company': app.job?.company_name || '',
+      'Package': app.job?.package || '',
+      'Location': app.job?.location || '',
+      'Status': formatStatus(app.status),
+      'Applied Date': formatDate(app.created_at),
+      'Last Updated': formatDate(app.updated_at),
+      'Admin Notes': app.admin_notes || ''
     }));
   };
 
-  const getApplicationsCSVData = () => {
-    return filteredApplications.map(app => ({
-      'Student Name': `${app.student_profile?.first_name} ${app.student_profile?.last_name}`,
-      'Phone': app.student_profile?.phone || 'N/A',
-      'Department': app.student_profile?.department || 'N/A',
-      'Course': app.graduation_details?.course || 'N/A',
-      'Passing Year': app.graduation_details?.passing_year || 'N/A',
-      'Job Title': app.job?.title || 'N/A',
-      'Company': app.job?.company_name || 'N/A',
-      'Location': app.job?.location || 'N/A',
-      'Package': app.job?.package || 'N/A',
-      'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
-      'Applied Date': app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A',
-      'Admin Notes': app.admin_notes || 'N/A'
-    }));
+  const downloadOfferLetter = (application) => {
+    toast.error("Offer letter functionality is not available");
   };
 
-  const getJobsCSVData = () => {
-    return filteredJobs.map(job => ({
-      'Title': job.title,
-      'Company': job.company_name,
-      'Location': job.location,
-      'Package': job.package,
-      'Status': job.status,
-      'Applications': job.application_count,
-      'Selected Students': job.selected_count,
-      'Deadline': job.application_deadline ? new Date(job.application_deadline).toLocaleDateString() : 'N/A',
-      'Created On': job.created_at ? new Date(job.created_at).toLocaleDateString() : 'N/A',
-      'Min 10th Marks': job.min_class_x_marks || 'N/A',
-      'Min 12th Marks': job.min_class_xii_marks || 'N/A',
-      'Min Graduation Marks': job.min_graduation_marks || 'N/A',
-      'Allow Backlog': job.allow_backlog ? 'Yes' : 'No'
-    }));
+  const formatDate = (date) => {
+    return date ? new Date(date).toLocaleDateString() : 'N/A';
+  };
+
+  const formatStatus = (status) => {
+    return status === 'ppo' ? 'PPO' : status.replace('_', ' ');
   };
 
   return (
@@ -842,7 +818,7 @@ const Reports = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg">Students Report</CardTitle>
                   <CSVLink 
-                    data={getStudentsCSVData()} 
+                    data={prepareDataForCSV(filteredStudents)} 
                     filename={'students-report.csv'} 
                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >
@@ -986,7 +962,7 @@ const Reports = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg">Applications Report</CardTitle>
                   <CSVLink 
-                    data={getApplicationsCSVData()} 
+                    data={prepareDataForCSV(filteredApplications)} 
                     filename={'applications-report.csv'} 
                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >
@@ -1210,7 +1186,6 @@ const Reports = () => {
                             <TableHead>
                               {renderSortButton('package', 'Package', applicationSortField, setApplicationSortField, applicationSortDirection, setApplicationSortDirection)}
                             </TableHead>
-                            <TableHead>Offer Letter</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1284,7 +1259,7 @@ const Reports = () => {
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg">Jobs Report</CardTitle>
                   <CSVLink 
-                    data={getJobsCSVData()} 
+                    data={prepareDataForCSV(filteredJobs)} 
                     filename={'jobs-report.csv'} 
                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >

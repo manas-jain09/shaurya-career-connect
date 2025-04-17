@@ -1,4 +1,3 @@
-
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -19,6 +18,7 @@ export interface StudentProfile {
   updated_at?: string;
   department?: string;
   is_frozen?: boolean;
+  is_eligible?: boolean;
 }
 
 export interface ClassXDetails {

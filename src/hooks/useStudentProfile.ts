@@ -26,7 +26,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [resume, setResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(true); // Always set to true
+  const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
   const [is_frozen, setIs_frozen] = useState<boolean>(false);
 
   // Use the provided profileId or get it from the user
@@ -56,8 +56,8 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
       const isFrozen = profileData.is_frozen || false;
       setIs_frozen(isFrozen);
       
-      // Always set isEligibleForJobs to true
-      setIsEligibleForJobs(true);
+      // Use the is_eligible field from the database
+      setIsEligibleForJobs(profileData.is_eligible !== null ? profileData.is_eligible : true);
       
       console.log('Profile data:', profileData);
 
@@ -122,7 +122,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
     isLoading,
     error,
     refreshData: fetchProfileData,
-    isEligibleForJobs, // Always true regardless of profile status
+    isEligibleForJobs,
     is_frozen
   };
 };
