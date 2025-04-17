@@ -1,8 +1,1 @@
-
 project_id = "ydfzjpzwbgyrtjxslsbs"
-
-[functions.notify-eligible-students]
-verify_jwt = true
-
-[functions.send-email]
-verify_jwt = true
