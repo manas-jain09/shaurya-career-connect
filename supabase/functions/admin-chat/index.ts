@@ -35,14 +35,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (!GEMINI_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: 'Gemini API key is not configured' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
   try {
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY is not set in environment variables');
+      return new Response(
+        JSON.stringify({ error: 'Gemini API key is not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { query, history } = await req.json();
     
     // Construct the prompt with system context and history
@@ -76,15 +77,21 @@ serve(async (req) => {
     ];
 
     // Add chat history if available
+    let conversationMessages = [...messages];
     if (history && Array.isArray(history)) {
       const recentHistory = history.slice(-10);
-      messages.push(...recentHistory.map((msg: Message) => ({
-        role: msg.role,
-        parts: [{ text: msg.content }]
-      })));
+      conversationMessages = [
+        ...messages,
+        ...recentHistory.map((msg: Message) => ({
+          role: msg.role,
+          parts: [{ text: msg.content }]
+        }))
+      ];
     }
 
-    // Call Gemini API
+    console.log('Calling Gemini API with messages:', JSON.stringify(conversationMessages, null, 2));
+
+    // Call Gemini API with proper error handling
     const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
       method: 'POST',
       headers: {
@@ -92,7 +99,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${GEMINI_API_KEY}`,
       },
       body: JSON.stringify({
-        contents: messages,
+        contents: conversationMessages,
         generationConfig: {
           temperature: 0.7,
           maxOutputTokens: 1024,
@@ -101,12 +108,32 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Gemini API error: ${error}`);
+      const errorText = await response.text();
+      console.error(`Gemini API error (Status ${response.status}):`, errorText);
+      
+      // Return a more user-friendly error message
+      return new Response(
+        JSON.stringify({ 
+          error: "Sorry, I'm having trouble connecting to the AI service. Please check your API key configuration or try again later." 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const result = await response.json();
+    
+    // Validate the response structure
+    if (!result.candidates || !result.candidates[0]?.content?.parts?.length) {
+      console.error('Invalid response structure from Gemini API:', JSON.stringify(result));
+      return new Response(
+        JSON.stringify({ error: "Received an invalid response from the AI service. Please try again." }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const aiResponse = result.candidates[0].content.parts[0].text;
+    
+    console.log('Successful response from Gemini API');
 
     return new Response(
       JSON.stringify({ response: aiResponse }),
@@ -115,7 +142,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in admin-chat function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'An unexpected error occurred. Please try again later.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

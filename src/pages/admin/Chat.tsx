@@ -12,8 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageCircle, Send, Bot, User, RefreshCw } from 'lucide-react';
+import { MessageCircle, Send, Bot, User, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface Message {
   id: string;
@@ -33,6 +34,7 @@ const AdminChat = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -46,6 +48,9 @@ const AdminChat = () => {
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
+    
+    // Clear any previous error message
+    setErrorMessage(null);
     
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -66,7 +71,15 @@ const AdminChat = () => {
         }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error invoking function:', error);
+        throw new Error(error.message || 'Failed to get a response');
+      }
+      
+      if (data.error) {
+        console.error('API returned error:', data.error);
+        throw new Error(data.error);
+      }
       
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
@@ -78,20 +91,19 @@ const AdminChat = () => {
       setMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
       console.error('Error querying AI:', error);
+      
+      // Set a visible error message for the user
+      setErrorMessage(
+        error instanceof Error 
+          ? error.message 
+          : 'Failed to get a response. Please try again.'
+      );
+      
       toast({
         title: 'Error',
         description: 'Failed to get a response. Please try again.',
         variant: 'destructive',
       });
-      
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: "I'm sorry, there was an error processing your request. Please try again later.",
-        timestamp: new Date(),
-      };
-      
-      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -101,6 +113,14 @@ const AdminChat = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleRetry = () => {
+    // Find the last user message and resend it
+    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    if (lastUserMessage) {
+      setInput(lastUserMessage.content);
     }
   };
 
@@ -151,6 +171,28 @@ const AdminChat = () => {
                 </div>
               </div>
             ))}
+            
+            {errorMessage && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertTriangle className="h-5 w-5" />
+                <AlertDescription>{errorMessage}</AlertDescription>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRetry} 
+                  className="ml-auto mt-2"
+                >
+                  Try Again
+                </Button>
+              </Alert>
+            )}
+            
+            {isLoading && (
+              <div className="flex justify-center my-4">
+                <div className="animate-spin h-8 w-8 border-4 border-current border-t-transparent text-primary rounded-full"></div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
         </CardContent>
