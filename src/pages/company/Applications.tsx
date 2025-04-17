@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,10 +50,16 @@ const Applications = () => {
   const [availableJobs, setAvailableJobs] = useState<{id: string, title: string}[]>([]);
   
   const fetchApplications = async () => {
-    if (!user?.companyCode) return;
+    if (!user?.companyCode) {
+      console.error("No company code found in user object:", user);
+      toast.error('Authentication error. Please log in again.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
+      console.log("Fetching jobs for company code:", user.companyCode);
       
       // First, get all job IDs for this company
       const { data: jobsData, error: jobsError } = await supabase
@@ -60,17 +67,25 @@ const Applications = () => {
         .select('id, title')
         .eq('company_code', user.companyCode);
         
-      if (jobsError) throw jobsError;
+      if (jobsError) {
+        console.error("Error fetching jobs:", jobsError);
+        throw jobsError;
+      }
+      
+      console.log("Jobs found for company:", jobsData?.length || 0, jobsData);
       
       if (!jobsData || jobsData.length === 0) {
+        console.log("No jobs found for company code:", user.companyCode);
         setApplications([]);
         setAvailableJobs([]);
+        setIsLoading(false);
         return;
       }
       
       setAvailableJobs(jobsData);
       
       const jobIds = jobsData.map(job => job.id);
+      console.log("Job IDs to fetch applications for:", jobIds);
       
       // Now get all applications with expanded details
       const { data, error } = await supabase
@@ -122,21 +137,28 @@ const Applications = () => {
         .in('job_id', jobIds)
         .order(sortField, { ascending: sortOrder === 'asc' });
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching applications:", error);
+        throw error;
+      }
+      
+      console.log("Applications data retrieved:", data?.length || 0, data);
       
       // Process and sanitize the data to match our interface
       const sanitizedData: JobApplication[] = (data || []).map((item: any) => {
+        console.log("Processing application item:", item.id);
         // Handle any potentially missing nested objects or error objects
         return {
           ...item,
           student_profile: item.student_profile || null,
-          graduation_details: item.graduation_details || null,
+          graduation_details: item.graduation_details && !item.graduation_details.error ? item.graduation_details : null,
           class_x_details: item.class_x_details && !item.class_x_details.error ? item.class_x_details : null,
           class_xii_details: item.class_xii_details && !item.class_xii_details.error ? item.class_xii_details : null,
           resume: item.resume && !item.resume.error ? item.resume : null
         };
       });
       
+      console.log("Sanitized applications data:", sanitizedData);
       setApplications(sanitizedData);
     } catch (error) {
       console.error('Error fetching applications:', error);
@@ -416,6 +438,9 @@ const Applications = () => {
     <CompanyLayout>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Applications</h1>
+        <Button onClick={fetchApplications} variant="outline">
+          Refresh Data
+        </Button>
       </div>
 
       <div className="bg-white rounded-lg p-6 shadow mb-6">
@@ -474,6 +499,11 @@ const Applications = () => {
         ) : filteredApplications.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-gray-500">No applications found matching your filters.</p>
+            <p className="text-sm text-gray-400 mt-2">
+              {applications.length === 0 ? 
+                "There are no applications for your company's job postings yet." : 
+                "Try adjusting your search or filter criteria."}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">

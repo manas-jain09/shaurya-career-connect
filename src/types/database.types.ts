@@ -1,4 +1,3 @@
-
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -155,6 +154,7 @@ export interface JobApplication {
   resume?: {
     file_url: string;
   } | null;
+  offer_letter_url?: string;
 }
 
 export interface Notification {
