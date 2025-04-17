@@ -775,7 +775,11 @@ const Reports = () => {
   };
 
   const downloadOfferLetter = (application) => {
-    toast.error("Offer letter functionality is not available");
+    toast({
+      title: "Error",
+      description: "Offer letter functionality is not available",
+      variant: "destructive",
+    });
   };
 
   const formatDate = (date) => {
