@@ -46,7 +46,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Slider } from '@/components/ui/slider';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('students');
@@ -80,9 +79,6 @@ const Reports = () => {
   const [applicationCourseFilter, setApplicationCourseFilter] = useState<string[]>([]);
   const [applicationPassingYearFilter, setApplicationPassingYearFilter] = useState<string[]>([]);
   const [applicationDepartmentFilter, setApplicationDepartmentFilter] = useState<string[]>([]);
-  const [minPackage, setMinPackage] = useState<number>(0);
-  const [maxPackage, setMaxPackage] = useState<number>(100);
-  const [packageRange, setPackageRange] = useState<[number, number]>([0, 100]);
   const [applicationSortField, setApplicationSortField] = useState<string>('date');
   const [applicationSortDirection, setApplicationSortDirection] = useState<'asc' | 'desc'>('desc');
   
@@ -93,8 +89,6 @@ const Reports = () => {
   const [jobStatusFilter, setJobStatusFilter] = useState<string[]>([]);
   const [jobDeadlineFilter, setJobDeadlineFilter] = useState<Date | undefined>(undefined);
   const [jobLocationFilter, setJobLocationFilter] = useState<string[]>([]);
-  const [selectedStudentsFilter, setSelectedStudentsFilter] = useState<[number, number]>([0, 100]);
-  const [maxSelectedStudents, setMaxSelectedStudents] = useState(100);
   const [jobSortField, setJobSortField] = useState<string>('title');
   const [jobSortDirection, setJobSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -231,24 +225,6 @@ const Reports = () => {
         }
       });
       
-      // Find min and max package values
-      let minPackageValue = Infinity;
-      let maxPackageValue = 0;
-      
-      applicationsWithGraduation.forEach(app => {
-        if (app.job?.package) {
-          // Add null check for package value
-          const packageStr = app.job.package;
-          const packageValue = parseFloat(packageStr.replace(/[^\d.]/g, '')) || 0;
-          if (packageValue < minPackageValue) minPackageValue = packageValue;
-          if (packageValue > maxPackageValue) maxPackageValue = packageValue;
-        }
-      });
-      
-      setMinPackage(Math.floor(minPackageValue) || 0);
-      setMaxPackage(Math.ceil(maxPackageValue) || 100);
-      setPackageRange([Math.floor(minPackageValue) || 0, Math.ceil(maxPackageValue) || 100]);
-      
       setCourses(Array.from(allCourses).sort());
       setPassingYears(Array.from(allPassingYears).sort());
       setDepartments(Array.from(allDepartments).sort());
@@ -299,22 +275,16 @@ const Reports = () => {
         })
       );
       
-      // Extract unique locations and max selected students
+      // Extract unique locations
       const allLocations = new Set<string>();
-      let maxSelected = 0;
       
       jobsWithCounts.forEach(job => {
         if (job.location) {
           allLocations.add(job.location);
         }
-        if (job.selected_count && job.selected_count > maxSelected) {
-          maxSelected = job.selected_count;
-        }
       });
       
       setLocations(Array.from(allLocations).sort());
-      setMaxSelectedStudents(maxSelected > 0 ? maxSelected : 100);
-      setSelectedStudentsFilter([0, maxSelected > 0 ? maxSelected : 100]);
       
       setJobs(jobsWithCounts as JobPosting[]);
       setFilteredJobs(jobsWithCounts as JobPosting[]);
@@ -397,10 +367,10 @@ const Reports = () => {
           break;
         case 'package':
           // Add null check for package value
-          const packageA = a.job?.package || '0';
-          const packageB = b.job?.package || '0';
-          valueA = parseFloat(packageA.replace(/[^\d.]/g, '')) || 0;
-          valueB = parseFloat(packageB.replace(/[^\d.]/g, '')) || 0;
+          const packageA = a.job?.package;
+          const packageB = b.job?.package;
+          valueA = packageA ? parseFloat(packageA.replace(/[^\d.]/g, '')) || 0 : 0;
+          valueB = packageB ? parseFloat(packageB.replace(/[^\d.]/g, '')) || 0 : 0;
           break;
         default:
           valueA = a[applicationSortField as keyof JobApplication] || '';
@@ -435,10 +405,10 @@ const Reports = () => {
           break;
         case 'package':
           // Add null check for package value
-          const packageA = a.package || '0';
-          const packageB = b.package || '0';
-          valueA = parseFloat(packageA.replace(/[^\d.]/g, '')) || 0;
-          valueB = parseFloat(packageB.replace(/[^\d.]/g, '')) || 0;
+          const packageA = a.package;
+          const packageB = b.package;
+          valueA = packageA ? parseFloat(packageA.replace(/[^\d.]/g, '')) || 0 : 0;
+          valueB = packageB ? parseFloat(packageB.replace(/[^\d.]/g, '')) || 0 : 0;
           break;
         case 'applications':
           valueA = a.application_count || 0;
@@ -609,15 +579,6 @@ const Reports = () => {
       );
     }
     
-    // Filter by package range with null check
-    filtered = filtered.filter(app => {
-      if (!app.job?.package) return true; // Include if no package specified
-      // Add null check for package value
-      const packageStr = app.job.package;
-      const packageValue = parseFloat(packageStr.replace(/[^\d.]/g, '')) || 0;
-      return packageValue >= packageRange[0] && packageValue <= packageRange[1];
-    });
-    
     // Apply sorting
     const sortedData = sortApplications(filtered);
     
@@ -629,7 +590,6 @@ const Reports = () => {
     applicationCourseFilter,
     applicationPassingYearFilter,
     applicationDepartmentFilter,
-    packageRange,
     applicationSortField,
     applicationSortDirection,
     applications
@@ -676,12 +636,6 @@ const Reports = () => {
       );
     }
     
-    // Filter by selected students range
-    filtered = filtered.filter(job => {
-      const selectedCount = job.selected_count || 0;
-      return selectedCount >= selectedStudentsFilter[0] && selectedCount <= selectedStudentsFilter[1];
-    });
-    
     // Apply sorting
     const sortedData = sortJobs(filtered);
     
@@ -691,7 +645,6 @@ const Reports = () => {
     jobStatusFilter, 
     jobDeadlineFilter, 
     jobLocationFilter,
-    selectedStudentsFilter,
     jobSortField,
     jobSortDirection,
     jobs
@@ -906,7 +859,7 @@ const Reports = () => {
                       </div>
                     </div>
                     
-                    <div className="rounded-md border">
+                    <div className="rounded-md border overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1026,43 +979,10 @@ const Reports = () => {
                         {renderMultiSelect("Courses", courses, applicationCourseFilter, setApplicationCourseFilter)}
                         {renderMultiSelect("Passing Years", passingYears, applicationPassingYearFilter, setApplicationPassingYearFilter)}
                         {renderMultiSelect("Departments", departments, applicationDepartmentFilter, setApplicationDepartmentFilter)}
-                        
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-[180px] justify-between text-left font-normal"
-                            >
-                              <span>Package Range</span>
-                              <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
-                                {packageRange[0]}-{packageRange[1]}L
-                              </span>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 p-4">
-                            <div className="space-y-4">
-                              <div className="flex justify-between">
-                                <span>Package Range (in Lakhs)</span>
-                              </div>
-                              <Slider
-                                defaultValue={packageRange}
-                                min={minPackage}
-                                max={maxPackage}
-                                step={1}
-                                onValueChange={(value) => setPackageRange(value as [number, number])}
-                                className="mt-2"
-                              />
-                              <div className="flex justify-between">
-                                <span>{packageRange[0]}L</span>
-                                <span>{packageRange[1]}L</span>
-                              </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
                       </div>
                     </div>
                     
-                    <div className="rounded-md border">
+                    <div className="rounded-md border overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1187,43 +1107,10 @@ const Reports = () => {
                         </Popover>
                         
                         {renderMultiSelect("Locations", locations, jobLocationFilter, setJobLocationFilter)}
-                        
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="outline"
-                              className="w-[180px] justify-between text-left font-normal"
-                            >
-                              <span>Selected Range</span>
-                              <span className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">
-                                {selectedStudentsFilter[0]}-{selectedStudentsFilter[1]}
-                              </span>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 p-4">
-                            <div className="space-y-4">
-                              <div className="flex justify-between">
-                                <span>Selected Students Range</span>
-                              </div>
-                              <Slider
-                                defaultValue={selectedStudentsFilter}
-                                min={0}
-                                max={maxSelectedStudents}
-                                step={1}
-                                onValueChange={(value) => setSelectedStudentsFilter(value as [number, number])}
-                                className="mt-2"
-                              />
-                              <div className="flex justify-between">
-                                <span>{selectedStudentsFilter[0]}</span>
-                                <span>{selectedStudentsFilter[1]}</span>
-                              </div>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
                       </div>
                     </div>
                     
-                    <div className="rounded-md border">
+                    <div className="rounded-md border overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
