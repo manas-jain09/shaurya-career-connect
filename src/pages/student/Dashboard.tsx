@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,42 +94,29 @@ const Dashboard = () => {
         async (payload) => {
           console.log('New job posting detected:', payload);
           
-          // Check if the student is eligible for this job
-          const jobId = payload.new.id;
-          
-          if (profile.is_verified && profile.placement_interest === 'placement/internship') {
-            try {
-              const { data: isEligible, error } = await supabase
-                .rpc('check_job_eligibility', {
-                  p_student_id: profile.id,
-                  p_job_id: jobId
-                });
-                
-              if (error) throw error;
+          // All students are now eligible for all jobs
+          try {
+            // Create a notification for every job
+            const jobId = payload.new.id;
+            const jobTitle = payload.new.title;
+            const companyName = payload.new.company_name;
+            
+            toast.info(`New job opportunity available: ${jobTitle} at ${companyName}`);
+            
+            // Insert notification into the database
+            await supabase
+              .from('notifications')
+              .insert({
+                user_id: user.id,
+                title: 'New Job Opportunity',
+                message: `A new position is available: ${jobTitle} at ${companyName}. Check it out!`,
+                is_read: false
+              });
               
-              if (isEligible) {
-                // Create a notification for the eligible job
-                const jobTitle = payload.new.title;
-                const companyName = payload.new.company_name;
-                
-                toast.info(`New job opportunity available: ${jobTitle} at ${companyName}`);
-                
-                // Insert notification into the database
-                await supabase
-                  .from('notifications')
-                  .insert({
-                    user_id: user.id,
-                    title: 'New Job Opportunity',
-                    message: `You are eligible for ${jobTitle} at ${companyName}. Check it out!`,
-                    is_read: false
-                  });
-                  
-                // Refresh notifications
-                fetchRecentNotifications();
-              }
-            } catch (error) {
-              console.error('Error checking job eligibility:', error);
-            }
+            // Refresh notifications
+            fetchRecentNotifications();
+          } catch (error) {
+            console.error('Error creating job notification:', error);
           }
         }
       )

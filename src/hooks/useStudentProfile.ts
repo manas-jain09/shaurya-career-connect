@@ -26,7 +26,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [resume, setResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
+  const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(true); // Always set to true by default
   const [is_frozen, setIs_frozen] = useState<boolean>(false);
 
   // Use the provided profileId or get it from the user
@@ -52,21 +52,13 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
       if (profileError) throw profileError;
       setProfile(profileData);
 
-      // Determine job eligibility based on verification status, placement interest, and frozen status
-      // The student is eligible for jobs if they are verified AND they have chosen placement/internship AND not frozen
-      const isVerified = profileData.is_verified || false;
-      const placementInterest = profileData.placement_interest || '';
-      const isFrozen = profileData.is_frozen || false;
-      const isBlocked = profileData.is_blocked || false;
+      // Always set eligible for jobs to true regardless of any conditions
+      setIsEligibleForJobs(true);
       
-      const isEligible = isVerified && 
-                         placementInterest === 'placement/internship' && 
-                         !isFrozen &&
-                         !isBlocked;
+      // Still track the frozen status for internal use
+      setIs_frozen(profileData.is_frozen || false);
       
-      setIsEligibleForJobs(isEligible);
-      
-      console.log('Eligibility check:', { isVerified, placementInterest, isFrozen, isBlocked, isEligible });
+      console.log('Eligibility forced to true for all students');
 
       // Fetch Class X details
       const { data: classXData, error: classXError } = await supabase

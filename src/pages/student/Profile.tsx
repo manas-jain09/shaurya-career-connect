@@ -57,7 +57,7 @@ const ProfilePage = () => {
   });
 
   const getPlacementInterestIcon = () => {
-    if (!profile?.placement_interest) return <Briefcase />;
+    if (!profile?.placement_interest) return <Briefcase className="text-blue-500" />;
     
     switch (profile.placement_interest) {
       case 'higher_studies':
@@ -342,35 +342,14 @@ const ProfilePage = () => {
           </CardContent>
         </Card>
         
-        <Card className={isEligibleForJobs ? "bg-blue-50" : "bg-orange-50"}>
+        <Card className="bg-blue-50">
           <CardContent className="p-4">
             <div className="flex items-center">
-              {isEligibleForJobs ? (
-                <>
-                  <Briefcase className="text-blue-500 mr-2" size={20} />
-                  <div>
-                    <p className="font-medium text-blue-700">Eligible for Placements</p>
-                    <p className="text-sm text-blue-600">You can apply for job postings</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="text-orange-500 mr-2" size={20} />
-                  <div>
-                    <p className="font-medium text-orange-700">Opted Out of Placements</p>
-                    <p className="text-sm text-orange-600">
-                      {profile?.placement_interest === 'placement/internship' 
-                        ? 'Your profile needs to be verified before you can apply for jobs'
-                        : `You have indicated interest in ${profile?.placement_interest === 'higher_studies' 
-                           ? 'higher studies' 
-                           : profile?.placement_interest === 'family_business' 
-                             ? 'family business' 
-                             : 'entrepreneurship'}`
-                      }
-                    </p>
-                  </div>
-                </>
-              )}
+              <Briefcase className="text-blue-500 mr-2" size={20} />
+              <div>
+                <p className="font-medium text-blue-700">Eligible for Placements</p>
+                <p className="text-sm text-blue-600">You can apply for job postings</p>
+              </div>
             </div>
           </CardContent>
         </Card>
