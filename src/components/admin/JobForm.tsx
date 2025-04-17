@@ -1,24 +1,65 @@
+
 import React, { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
-import { JobPosting, JobPostingStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import { JobPosting } from '@/types/database.types';
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  Form,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import {
+  CoursesInput,
+  YearsInput
+} from './JobFormComponents';
+
+// Define the form schema
+const formSchema = z.object({
+  title: z.string().min(1, 'Job title is required'),
+  company_name: z.string().min(1, 'Company name is required'),
+  company_code: z.string().min(1, 'Company code is required'),
+  location: z.string().min(1, 'Location is required'),
+  package: z.string().min(1, 'Package is required'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  application_deadline: z.date(),
+  min_class_x_marks: z.number().nullable(),
+  min_class_xii_marks: z.number().nullable(),
+  min_graduation_marks: z.number().nullable(),
+  min_class_x_cgpa: z.number().nullable(),
+  min_class_xii_cgpa: z.number().nullable(),
+  min_graduation_cgpa: z.number().nullable(),
+  cgpa_scale: z.number().nullable(),
+  eligible_courses: z.array(z.string()).nullable(),
+  eligible_passing_years: z.array(z.number()).nullable(),
+  allow_backlog: z.boolean().default(false),
+  status: z.enum(['active', 'closed', 'draft']),
+});
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface JobFormProps {
   job?: JobPosting | null;
@@ -27,150 +68,71 @@ interface JobFormProps {
 }
 
 const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
-  const [formData, setFormData] = useState<Partial<JobPosting>>({
-    title: '',
-    company_name: '',
-    location: '',
-    package: '',
-    description: '',
-    application_deadline: '',
-    min_class_x_marks: null,
-    min_class_xii_marks: null,
-    min_graduation_marks: null,
-    min_class_x_cgpa: null,
-    min_class_xii_cgpa: null,
-    min_graduation_cgpa: null,
-    cgpa_scale: null,
-    eligible_courses: [],
-    eligible_passing_years: [],
-    allow_backlog: false,
-    status: 'active',
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [companies, setCompanies] = useState<{id: string, username: string, company_code: string}[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+
+  const defaultValues: FormValues = {
+    title: job?.title || '',
+    company_name: job?.company_name || '',
+    company_code: job?.company_code || '',
+    location: job?.location || '',
+    package: job?.package || '',
+    description: job?.description || '',
+    application_deadline: job?.application_deadline ? new Date(job.application_deadline) : new Date(),
+    min_class_x_marks: job?.min_class_x_marks || null,
+    min_class_xii_marks: job?.min_class_xii_marks || null,
+    min_graduation_marks: job?.min_graduation_marks || null,
+    min_class_x_cgpa: job?.min_class_x_cgpa || null,
+    min_class_xii_cgpa: job?.min_class_xii_cgpa || null,
+    min_graduation_cgpa: job?.min_graduation_cgpa || null,
+    cgpa_scale: job?.cgpa_scale || 10,
+    eligible_courses: job?.eligible_courses || [],
+    eligible_passing_years: job?.eligible_passing_years || [],
+    allow_backlog: job?.allow_backlog || false,
+    status: job?.status || 'draft',
+  };
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues,
   });
 
-  const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
-
-  const [courseInput, setCourseInput] = useState('');
-  const [yearInput, setYearInput] = useState<string>('');
-
-  const courseOptions = [
-    "Mechanical Engineering",
-    "Electrical and Electronics Engineering (EEE)",
-    "Computer Engineering and Technology(Core)",
-    "Computer Engineering and Technology - AIDS",
-    "Computer Engineering and Technology - Cyber Security",
-    "Computer Engineering and Technology - CSBS"
-  ];
-
-  const currentYear = new Date().getFullYear();
-  const graduationYears = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
-
   useEffect(() => {
-    if (job) {
-      const formattedDate = job.application_deadline 
-        ? new Date(job.application_deadline).toISOString().split('T')[0]
-        : '';
-
-      setFormData({
-        ...job,
-        application_deadline: formattedDate,
-      });
-    }
-  }, [job]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-  };
-
-  const handleStatusChange = (value: JobPostingStatus) => {
-    setFormData({ ...formData, status: value });
-  };
-
-  const handleBacklogChange = (checked: boolean) => {
-    setFormData({ ...formData, allow_backlog: checked });
-  };
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const numberValue = value === '' ? null : parseFloat(value);
-    setFormData({ ...formData, [name]: numberValue });
-  };
-
-  const handleScaleChange = (value: string) => {
-    setFormData({ ...formData, cgpa_scale: value ? parseInt(value) : null });
-  };
-
-  const addCourse = (course: string) => {
-    if (!course) return;
-    
-    const currentCourses = formData.eligible_courses || [];
-    if (!currentCourses.includes(course)) {
-      setFormData({ 
-        ...formData, 
-        eligible_courses: [...currentCourses, course] 
-      });
-    }
-    setCourseInput('');
-  };
-
-  const removeCourse = (courseToRemove: string) => {
-    const currentCourses = formData.eligible_courses || [];
-    setFormData({
-      ...formData,
-      eligible_courses: currentCourses.filter(course => course !== courseToRemove)
-    });
-  };
-
-  const addYear = () => {
-    if (!yearInput) return;
-    
-    const year = parseInt(yearInput);
-    const currentYears = formData.eligible_passing_years || [];
-    
-    if (!currentYears.includes(year)) {
-      setFormData({
-        ...formData,
-        eligible_passing_years: [...currentYears, year]
-      });
-    }
-    setYearInput('');
-  };
-
-  const removeYear = (yearToRemove: number) => {
-    const currentYears = formData.eligible_passing_years || [];
-    setFormData({
-      ...formData,
-      eligible_passing_years: currentYears.filter(year => year !== yearToRemove)
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    try {
-      setSaving(true);
+    // Fetch companies
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, username, company_code');
       
-      if (!formData.title || !formData.company_name || !formData.location || 
-          !formData.package || !formData.description || !formData.application_deadline) {
-        toast({
-          title: 'Error',
-          description: 'Please fill all required fields',
-          variant: 'destructive',
-        });
+      if (error) {
+        console.error('Error fetching companies:', error);
         return;
       }
+      
+      setCompanies(data || []);
+      
+      // If editing a job with company_id, set the selected company
+      if (job?.company_id) {
+        setSelectedCompany(job.company_id);
+      }
+    };
+    
+    fetchCompanies();
+  }, [job]);
 
-      console.log("Attempting to save job data:", formData);
-
+  const onSubmit = async (values: FormValues) => {
+    setIsSubmitting(true);
+    try {
       const jobData = {
-        ...formData,
-        eligible_courses: formData.eligible_courses || [],
-        eligible_passing_years: formData.eligible_passing_years || [],
-        updated_at: new Date().toISOString()
+        ...values,
+        // Find the company_id if a company was selected
+        company_id: selectedCompany || null,
       };
 
       if (job?.id) {
+        // Update existing job
         const { error } = await supabase
           .from('job_postings')
           .update(jobData)
@@ -180,43 +142,19 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
 
         toast({
           title: 'Success',
-          description: 'Job posting updated successfully'
+          description: 'Job posting updated successfully',
         });
       } else {
-        const newJobData = {
-          title: formData.title,
-          company_name: formData.company_name,
-          location: formData.location,
-          package: formData.package,
-          description: formData.description,
-          application_deadline: formData.application_deadline,
-          min_class_x_marks: formData.min_class_x_marks,
-          min_class_xii_marks: formData.min_class_xii_marks,
-          min_graduation_marks: formData.min_graduation_marks,
-          min_class_x_cgpa: formData.min_class_x_cgpa,
-          min_class_xii_cgpa: formData.min_class_xii_cgpa,
-          min_graduation_cgpa: formData.min_graduation_cgpa,
-          cgpa_scale: formData.cgpa_scale,
-          eligible_courses: formData.eligible_courses || [],
-          eligible_passing_years: formData.eligible_passing_years || [],
-          allow_backlog: formData.allow_backlog,
-          status: formData.status,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
-
-        console.log("Inserting new job:", newJobData);
-        const { error, data } = await supabase
+        // Create new job
+        const { error } = await supabase
           .from('job_postings')
-          .insert(newJobData)
-          .select();
+          .insert([jobData]);
 
         if (error) throw error;
 
-        console.log("Job created successfully:", data);
         toast({
           title: 'Success',
-          description: 'Job posting created successfully'
+          description: 'Job posting created successfully',
         });
       }
 
@@ -229,355 +167,471 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
         variant: 'destructive',
       });
     } finally {
-      setSaving(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCompanySelect = (companyId: string) => {
+    setSelectedCompany(companyId);
+    
+    // Find the selected company details
+    const company = companies.find(c => c.id === companyId);
+    
+    if (company) {
+      // Update company name and code in the form
+      form.setValue('company_name', company.username);
+      form.setValue('company_code', company.company_code);
     }
   };
 
   return (
-    <ScrollArea className="h-[80vh]">
-      <div className="space-y-6 pr-4">
-        <div>
-          <h2 className="text-xl font-bold">{job ? 'Edit Job Posting' : 'Create New Job Posting'}</h2>
-          <p className="text-gray-600">Fill in the details for this job opportunity</p>
-        </div>
+    <div className="max-h-[80vh] overflow-y-auto pr-1">
+      <DialogHeader>
+        <DialogTitle>{job ? 'Edit Job Posting' : 'Create New Job Posting'}</DialogTitle>
+        <DialogDescription>
+          {job ? 'Update the details of this job posting' : 'Add a new job posting to the system'}
+        </DialogDescription>
+      </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Job Basic Details */}
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Job Title *</Label>
-              <Input 
-                id="title" 
-                name="title" 
-                value={formData.title} 
-                onChange={handleInputChange}
-                placeholder="e.g. Software Engineer"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="company_name">Company Name *</Label>
-              <Input 
-                id="company_name" 
-                name="company_name" 
-                value={formData.company_name} 
-                onChange={handleInputChange}
-                placeholder="e.g. Tech Innovations Inc."
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="location">Location *</Label>
-              <Input 
-                id="location" 
-                name="location" 
-                value={formData.location} 
-                onChange={handleInputChange}
-                placeholder="e.g. Bangalore, India"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="package">Package/Salary *</Label>
-              <Input 
-                id="package" 
-                name="package" 
-                value={formData.package} 
-                onChange={handleInputChange}
-                placeholder="e.g. ₹8-10 LPA"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Job Description *</Label>
-            <Textarea 
-              id="description" 
-              name="description" 
-              value={formData.description} 
-              onChange={handleInputChange}
-              placeholder="Provide details about the job role, responsibilities, requirements, etc."
-              rows={6}
-              required
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Job Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Software Engineer" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="application_deadline">Application Deadline *</Label>
-            <Input 
-              id="application_deadline" 
-              name="application_deadline" 
-              type="date" 
-              value={formData.application_deadline || ''} 
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-
-          <Separator className="my-6" />
-
-          {/* Eligibility Criteria */}
-          <div className="border rounded-md p-4 space-y-6">
-            <h3 className="font-medium">Eligibility Criteria</h3>
-            
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Class X Requirements</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="min_class_x_marks">Minimum Class X Marks (%)</Label>
-                  <Input 
-                    id="min_class_x_marks" 
-                    name="min_class_x_marks" 
-                    type="number" 
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={formData.min_class_x_marks || ''} 
-                    onChange={handleNumberChange}
-                    placeholder="e.g. 70"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="min_class_x_cgpa">Minimum Class X CGPA</Label>
-                  <Input 
-                    id="min_class_x_cgpa" 
-                    name="min_class_x_cgpa" 
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.min_class_x_cgpa || ''} 
-                    onChange={handleNumberChange}
-                    placeholder="e.g. 7.5"
-                  />
-                </div>
-              </div>
-
-              <h4 className="text-sm font-medium">Class XII Requirements</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="min_class_xii_marks">Minimum Class XII Marks (%)</Label>
-                  <Input 
-                    id="min_class_xii_marks" 
-                    name="min_class_xii_marks" 
-                    type="number"
-                    min="0"
-                    max="100" 
-                    step="0.01"
-                    value={formData.min_class_xii_marks || ''} 
-                    onChange={handleNumberChange}
-                    placeholder="e.g. 70"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="min_class_xii_cgpa">Minimum Class XII CGPA</Label>
-                  <Input 
-                    id="min_class_xii_cgpa" 
-                    name="min_class_xii_cgpa" 
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.min_class_xii_cgpa || ''} 
-                    onChange={handleNumberChange}
-                    placeholder="e.g. 7.5"
-                  />
-                </div>
-              </div>
-
-              <h4 className="text-sm font-medium">Graduation Requirements</h4>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="min_graduation_marks">Minimum Graduation Marks (%)</Label>
-                  <Input 
-                    id="min_graduation_marks" 
-                    name="min_graduation_marks" 
-                    type="number"
-                    min="0"
-                    max="100" 
-                    step="0.01"
-                    value={formData.min_graduation_marks || ''} 
-                    onChange={handleNumberChange}
-                    placeholder="e.g. 65"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="min_graduation_cgpa">Minimum Graduation CGPA</Label>
-                  <Input 
-                    id="min_graduation_cgpa" 
-                    name="min_graduation_cgpa" 
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.min_graduation_cgpa || ''} 
-                    onChange={handleNumberChange}
-                    placeholder="e.g. 7.5"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="cgpa_scale">CGPA Scale</Label>
+            {companies.length > 0 && (
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Select Company (Optional)</label>
                 <Select
-                  value={formData.cgpa_scale?.toString() || ''}
-                  onValueChange={handleScaleChange}
+                  value={selectedCompany || ''}
+                  onValueChange={handleCompanySelect}
                 >
-                  <SelectTrigger id="cgpa_scale">
-                    <SelectValue placeholder="Select Scale" />
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a company" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="5">5</SelectItem>
-                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="">No company selected</SelectItem>
+                    {companies.map(company => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.username} ({company.company_code})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                <p className="text-sm text-gray-500">
+                  Selecting a company will auto-fill company details
+                </p>
               </div>
-            </div>
-            
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Eligible Courses</h4>
-              
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={courseInput} onValueChange={setCourseInput}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select Course" />
-                    </SelectTrigger>
+            )}
+
+            <FormField
+              control={form.control}
+              name="company_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Acme Inc." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="company_code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company Code</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. ACME123" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Unique code for company access
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Bangalore, India" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="package"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Package</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. 10-12 LPA" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="application_deadline"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Application Deadline</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                    </FormControl>
                     <SelectContent>
-                      {courseOptions.map(course => (
-                        <SelectItem key={course} value={course}>
-                          {course}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
                     </SelectContent>
                   </Select>
-                  
-                  <Button 
-                    type="button" 
-                    onClick={() => addCourse(courseInput)}
-                    disabled={!courseInput}
-                  >
-                    Add
-                  </Button>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  {(formData.eligible_courses || []).map(course => (
-                    <Badge key={course} variant="secondary" className="flex items-center gap-1 px-3 py-1">
-                      {course}
-                      <X 
-                        size={14} 
-                        className="cursor-pointer ml-1" 
-                        onClick={() => removeCourse(course)}
-                      />
-                    </Badge>
-                  ))}
-                  
-                  {(formData.eligible_courses || []).length === 0 && (
-                    <p className="text-sm text-gray-500">No courses selected. All courses will be eligible.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium">Eligible Graduation Years</h4>
-              
-              <div className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={yearInput} onValueChange={setYearInput}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Select Year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {graduationYears.map(year => (
-                        <SelectItem key={year} value={year.toString()}>
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Button 
-                    type="button" 
-                    onClick={addYear}
-                    disabled={!yearInput}
-                  >
-                    Add
-                  </Button>
-                </div>
-                
-                <div className="flex flex-wrap gap-2">
-                  {(formData.eligible_passing_years || []).map(year => (
-                    <Badge key={year} variant="secondary" className="flex items-center gap-1 px-3 py-1">
-                      {year}
-                      <X 
-                        size={14} 
-                        className="cursor-pointer ml-1" 
-                        onClick={() => removeYear(year)}
-                      />
-                    </Badge>
-                  ))}
-                  
-                  {(formData.eligible_passing_years || []).length === 0 && (
-                    <p className="text-sm text-gray-500">No years selected. All graduation years will be eligible.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="allow_backlog" 
-                checked={formData.allow_backlog} 
-                onCheckedChange={handleBacklogChange}
-              />
-              <Label htmlFor="allow_backlog">Allow students with backlog to apply</Label>
-            </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
-          <div className="space-y-2">
-            <Label>Job Status</Label>
-            <RadioGroup 
-              value={formData.status} 
-              onValueChange={(value) => handleStatusChange(value as JobPostingStatus)}
-              className="flex flex-col space-y-1"
-            >
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="active" id="active" />
-                <Label htmlFor="active">Active (visible to students)</Label>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Job Description</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Enter details about the job role, responsibilities, and requirements..."
+                    className="min-h-32"
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium">Eligibility Criteria</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <FormField
+                  control={form.control}
+                  name="min_class_x_marks"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Class X Percentage</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 60"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Leave empty if not applicable</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="closed" id="closed" />
-                <Label htmlFor="closed">Closed (no longer accepting applications)</Label>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name="min_class_x_cgpa"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Class X CGPA</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 6.0"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Leave empty if not applicable</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="draft" id="draft" />
-                <Label htmlFor="draft">Draft (not visible to students)</Label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <FormField
+                  control={form.control}
+                  name="min_class_xii_marks"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Class XII Percentage</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 60"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Leave empty if not applicable</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
-            </RadioGroup>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name="min_class_xii_cgpa"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Class XII CGPA</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 6.0"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Leave empty if not applicable</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <FormField
+                  control={form.control}
+                  name="min_graduation_marks"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Graduation Percentage</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 65"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Leave empty if not applicable</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name="min_graduation_cgpa"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Graduation CGPA</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 6.5"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                            field.onChange(value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>Leave empty if not applicable</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <FormField
+                  control={form.control}
+                  name="cgpa_scale"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CGPA Scale</FormLabel>
+                      <Select
+                        value={field.value?.toString() || '10'}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select CGPA scale" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="4">4.0</SelectItem>
+                          <SelectItem value="5">5.0</SelectItem>
+                          <SelectItem value="10">10.0</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Scale used for CGPA calculations</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
+                <FormField
+                  control={form.control}
+                  name="allow_backlog"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 pt-6">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>Allow Backlog</FormLabel>
+                        <FormDescription>
+                          Allow students with backlog to apply
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Controller
+              control={form.control}
+              name="eligible_courses"
+              render={({ field }) => (
+                <CoursesInput
+                  value={field.value || []}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+
+            <Controller
+              control={form.control}
+              name="eligible_passing_years"
+              render={({ field }) => (
+                <YearsInput
+                  value={field.value || []}
+                  onChange={field.onChange}
+                />
+              )}
+            />
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? 'Saving...' : (job ? 'Update Job' : 'Create Job')}
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : (job ? 'Update' : 'Create')}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </ScrollArea>
+      </Form>
+    </div>
   );
 };
 

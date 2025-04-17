@@ -6,6 +6,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import Index from './pages/Index';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import CompanyLogin from './pages/CompanyLogin';
 import AdminDashboard from './pages/admin/Dashboard';
 import Verification from './pages/admin/Verification';
 import VerificationDetail from './pages/admin/VerificationDetail';
@@ -17,6 +18,9 @@ import Profile from './pages/student/Profile';
 import StudentJobs from './pages/student/Jobs';
 import StudentApplications from './pages/student/Applications';
 import Notifications from './pages/student/Notifications';
+import CompanyDashboard from './pages/company/Dashboard';
+import CompanyApplications from './pages/company/Applications';
+import CompanyJobs from './pages/company/Jobs';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import Applications from './pages/admin/Applications';
@@ -32,6 +36,7 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/company-login" element={<CompanyLogin />} />
             
             <Route path="/admin/dashboard" element={
               <ProtectedRoute requiredRole="admin">
@@ -92,6 +97,22 @@ function App() {
             <Route path="/student/notifications" element={
               <ProtectedRoute requiredRole="student">
                 <Notifications />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/company/dashboard" element={
+              <ProtectedRoute requiredRole="company">
+                <CompanyDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/applications" element={
+              <ProtectedRoute requiredRole="company">
+                <CompanyApplications />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/jobs" element={
+              <ProtectedRoute requiredRole="company">
+                <CompanyJobs />
               </ProtectedRoute>
             } />
             

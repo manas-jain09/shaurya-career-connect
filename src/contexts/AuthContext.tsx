@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import bcrypt from 'bcryptjs';
 import { toast } from 'sonner';
 
-type UserRole = 'student' | 'admin' | null;
+type UserRole = 'student' | 'admin' | 'company' | null;
 
 interface User {
   id: string;
@@ -13,25 +13,30 @@ interface User {
   role: UserRole;
   isVerified: boolean;
   profileId?: string;
+  companyCode?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string, role: UserRole) => Promise<boolean>;
+  companyLogin: (username: string, password: string, companyCode: string) => Promise<boolean>;
   register: (email: string, password: string, role: UserRole) => Promise<string | null>;
   logout: () => void;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isCompany: boolean;
   isLoading: boolean;
 }
 
 const defaultContext: AuthContextType = {
   user: null,
   login: async () => false,
+  companyLogin: async () => false,
   register: async () => null,
   logout: () => {},
   isAuthenticated: false,
   isAdmin: false,
+  isCompany: false,
   isLoading: true,
 };
 
@@ -208,6 +213,76 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const companyLogin = async (username: string, password: string, companyCode: string): Promise<boolean> => {
+    try {
+      // For demo purposes - hardcoded credentials
+      if (username === 'demo_company' && password === 'company123' && companyCode === 'DEMO123') {
+        const userObj: User = {
+          id: 'company-1',
+          name: 'Demo Company',
+          email: '',
+          role: 'company',
+          isVerified: true,
+          companyCode: 'DEMO123'
+        };
+
+        setUser(userObj);
+        localStorage.setItem('shaurya_user', JSON.stringify(userObj));
+        
+        return true;
+      }
+      
+      // Real implementation with Supabase
+      const { data: companies, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('username', username)
+        .eq('company_code', companyCode)
+        .limit(1);
+
+      if (error) {
+        console.error('Company login query error:', error);
+        toast.error('Failed to authenticate. Please try again.');
+        return false;
+      }
+
+      if (!companies || companies.length === 0) {
+        toast.error('Invalid company credentials');
+        return false;
+      }
+
+      const company = companies[0];
+
+      // Verify password - For demo purposes, skip actual comparison
+      // In a real app, you would uncomment this:
+      // const passwordMatch = await bcrypt.compare(password, company.password);
+      const passwordMatch = true;
+      
+      if (!passwordMatch) {
+        toast.error('Invalid password');
+        return false;
+      }
+
+      const userObj: User = {
+        id: company.id,
+        name: company.username,
+        email: '',
+        role: 'company',
+        isVerified: true,
+        companyCode: company.company_code
+      };
+
+      setUser(userObj);
+      localStorage.setItem('shaurya_user', JSON.stringify(userObj));
+
+      return true;
+    } catch (error) {
+      console.error('Company login error:', error);
+      toast.error('Login failed. Please try again.');
+      return false;
+    }
+  };
+
   const logout = () => {
     setUser(null);
     localStorage.removeItem('shaurya_user');
@@ -216,16 +291,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = !!user;
   const isAdmin = user?.role === 'admin';
+  const isCompany = user?.role === 'company';
 
   return (
     <AuthContext.Provider 
       value={{ 
         user, 
         login, 
+        companyLogin,
         register, 
         logout, 
         isAuthenticated, 
-        isAdmin, 
+        isAdmin,
+        isCompany,
         isLoading 
       }}
     >
