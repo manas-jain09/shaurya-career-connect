@@ -1,4 +1,3 @@
-
 import React from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +6,8 @@ import { useJobApplications } from '@/hooks/useJobApplications';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, GraduationCap, Award, BarChart3 } from 'lucide-react';
+import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, GraduationCap, Award, BarChart3, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const statusDisplayConfig = {
   applied: {
@@ -179,11 +179,21 @@ const Applications = () => {
                           <h3 className="text-lg font-bold">{application.job?.title}</h3>
                           <p className="text-gray-600">{application.job?.company_name}</p>
                         </div>
-                        <div className="flex items-center mt-2 md:mt-0">
+                        <div className="flex items-center gap-2 mt-2 md:mt-0">
                           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDisplayConfig[application.status as JobApplicationStatus].color}`}>
                             {statusDisplayConfig[application.status as JobApplicationStatus].icon}
                             <span className="ml-1">{statusDisplayConfig[application.status as JobApplicationStatus].label}</span>
                           </div>
+                          {application.offer_letter_url && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(application.offer_letter_url!, '_blank')}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Offer Letter
+                            </Button>
+                          )}
                         </div>
                       </div>
                       
