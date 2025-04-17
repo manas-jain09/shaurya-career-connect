@@ -12,7 +12,6 @@ import VerificationDetail from './pages/admin/VerificationDetail';
 import Jobs from './pages/admin/Jobs';
 import Students from './pages/admin/Students';
 import Reports from './pages/admin/Reports';
-import AdminChat from './pages/admin/Chat';
 import StudentDashboard from './pages/student/Dashboard';
 import Profile from './pages/student/Profile';
 import StudentJobs from './pages/student/Jobs';
@@ -70,11 +69,6 @@ function App() {
             <Route path="/admin/reports" element={
               <ProtectedRoute requiredRole="admin">
                 <Reports />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin/chat" element={
-              <ProtectedRoute requiredRole="admin">
-                <AdminChat />
               </ProtectedRoute>
             } />
             

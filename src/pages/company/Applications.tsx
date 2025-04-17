@@ -310,7 +310,7 @@ const Applications = () => {
             <h3 className="text-lg font-semibold mb-2">Resume</h3>
             <Button 
               variant="outline" 
-              onClick={() => window.open(selectedStudent.resume?.file_url, '_blank')}
+              onClick={() => window.open(selectedStudent.resume?.resume_url, '_blank')}
             >
               <Download size={16} className="mr-2" /> Download Resume
             </Button>
