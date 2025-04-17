@@ -1,4 +1,3 @@
-
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -100,8 +99,6 @@ export interface JobPosting {
   updated_at?: string;
   application_count?: number;
   selected_count?: number;
-  company_code?: string;
-  company_id?: string;
 }
 
 export type JobApplicationStatus = 'applied' | 'under_review' | 'shortlisted' | 'rejected' | 'selected' | 'internship' | 'ppo' | 'placement';
@@ -141,13 +138,4 @@ export interface Notification {
   message: string;
   is_read: boolean;
   created_at?: string;
-}
-
-export interface Company {
-  id?: string;
-  username: string;
-  password?: string;
-  company_code: string;
-  created_at?: string;
-  updated_at?: string;
 }
