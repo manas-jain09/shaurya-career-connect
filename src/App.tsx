@@ -20,6 +20,9 @@ import Notifications from './pages/student/Notifications';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import Applications from './pages/admin/Applications';
+import CompanyDashboard from './pages/company/Dashboard';
+import CompanyJobs from './pages/company/Jobs';
+import CompanyApplications from './pages/company/Applications';
 
 function App() {
   const theme = localStorage.getItem('theme') || 'light';
@@ -92,6 +95,22 @@ function App() {
             <Route path="/student/notifications" element={
               <ProtectedRoute requiredRole="student">
                 <Notifications />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/company/dashboard" element={
+              <ProtectedRoute requiredRole="company">
+                <CompanyDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/jobs" element={
+              <ProtectedRoute requiredRole="company">
+                <CompanyJobs />
+              </ProtectedRoute>
+            } />
+            <Route path="/company/applications" element={
+              <ProtectedRoute requiredRole="company">
+                <CompanyApplications />
               </ProtectedRoute>
             } />
             

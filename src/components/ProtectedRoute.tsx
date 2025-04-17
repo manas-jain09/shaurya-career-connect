@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole: 'admin' | 'student';
+  requiredRole: 'admin' | 'student' | 'company';
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
@@ -25,7 +25,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
   
   if (user.role !== requiredRole) {
     // Redirect to the appropriate dashboard based on role
-    return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/student/dashboard'} replace />;
+    if (user.role === 'admin') {
+      return <Navigate to="/admin/dashboard" replace />;
+    } else if (user.role === 'company') {
+      return <Navigate to="/company/dashboard" replace />;
+    } else {
+      return <Navigate to="/student/dashboard" replace />;
+    }
   }
   
   return <>{children}</>;

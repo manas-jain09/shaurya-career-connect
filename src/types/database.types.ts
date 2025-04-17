@@ -1,4 +1,3 @@
-
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -141,4 +140,13 @@ export interface Notification {
   message: string;
   is_read: boolean;
   created_at?: string;
+}
+
+export interface Company {
+  id?: string;
+  username: string;
+  password: string;
+  company_code: string;
+  created_at?: string;
+  updated_at?: string;
 }
