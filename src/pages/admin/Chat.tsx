@@ -12,9 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
-import { MessageCircle, Send, Bot, User, RefreshCw, AlertTriangle } from 'lucide-react';
+import { MessageCircle, Send, Bot, User, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface Message {
   id: string;
@@ -35,6 +35,7 @@ const AdminChat = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -60,14 +61,20 @@ const AdminChat = () => {
     };
     
     setMessages((prev) => [...prev, userMessage]);
+    setLastUserMessage(input);
     setInput('');
     setIsLoading(true);
     
     try {
+      // Get only relevant messages for the context (exclude system messages)
+      const contextMessages = messages
+        .filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role, content: m.content }));
+      
       const { data, error } = await supabase.functions.invoke('admin-chat', {
         body: { 
           query: input,
-          history: messages.map(m => ({ role: m.role, content: m.content }))
+          history: contextMessages
         }
       });
       
@@ -117,11 +124,16 @@ const AdminChat = () => {
   };
 
   const handleRetry = () => {
-    // Find the last user message and resend it
-    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
     if (lastUserMessage) {
-      setInput(lastUserMessage.content);
+      setInput(lastUserMessage);
+    } else {
+      // Find the last user message and resend it
+      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+      if (lastUserMsg) {
+        setInput(lastUserMsg.content);
+      }
     }
+    setErrorMessage(null);
   };
 
   return (
@@ -175,13 +187,17 @@ const AdminChat = () => {
             {errorMessage && (
               <Alert variant="destructive" className="mt-4">
                 <AlertTriangle className="h-5 w-5" />
-                <AlertDescription>{errorMessage}</AlertDescription>
+                <div className="ml-3">
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </div>
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={handleRetry} 
-                  className="ml-auto mt-2"
+                  className="ml-auto mt-2 flex items-center"
                 >
+                  <RotateCcw className="h-4 w-4 mr-2" />
                   Try Again
                 </Button>
               </Alert>

@@ -39,7 +39,9 @@ serve(async (req) => {
     if (!GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY is not set in environment variables');
       return new Response(
-        JSON.stringify({ error: 'Gemini API key is not configured' }),
+        JSON.stringify({ 
+          error: 'Gemini API key is not configured. Please add a valid API key to your Supabase edge function secrets.' 
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -79,11 +81,14 @@ serve(async (req) => {
     // Add chat history if available
     let conversationMessages = [...messages];
     if (history && Array.isArray(history)) {
-      const recentHistory = history.slice(-10);
+      // Filter out system messages to avoid issues
+      const filteredHistory = history.filter(msg => msg.role !== 'system');
+      const recentHistory = filteredHistory.slice(-10);
+      
       conversationMessages = [
         ...messages,
         ...recentHistory.map((msg: Message) => ({
-          role: msg.role,
+          role: msg.role === 'assistant' ? 'model' : 'user',
           parts: [{ text: msg.content }]
         }))
       ];
@@ -110,6 +115,15 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Gemini API error (Status ${response.status}):`, errorText);
+      
+      if (response.status === 401) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Authentication failed. Your Gemini API key appears to be invalid or expired. Please update it in your Supabase secrets."
+          }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       
       // Return a more user-friendly error message
       return new Response(
