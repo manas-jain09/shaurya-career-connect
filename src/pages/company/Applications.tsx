@@ -87,7 +87,7 @@ const Applications = () => {
       const jobIds = jobsData.map(job => job.id);
       console.log("Job IDs to fetch applications for:", jobIds);
       
-      // Now get all applications with expanded details
+      // Fix the query to use properly nested joins instead of relying on column naming
       const { data, error } = await supabase
         .from('job_applications')
         .select(`
@@ -98,14 +98,14 @@ const Applications = () => {
             location,
             package
           ),
-          student_profile:student_id (
+          student_profile:student_profiles!student_id (
             first_name,
             last_name,
             department,
             phone,
             is_verified
           ),
-          graduation_details:student_id (
+          graduation_details:graduation_details!student_id (
             college_name,
             course,
             passing_year,
@@ -114,7 +114,7 @@ const Applications = () => {
             cgpa_scale,
             has_backlog
           ),
-          class_x_details:student_id (
+          class_x_details:class_x_details!student_id (
             school_name,
             board,
             marks,
@@ -122,7 +122,7 @@ const Applications = () => {
             cgpa_scale,
             passing_year
           ),
-          class_xii_details:student_id (
+          class_xii_details:class_xii_details!student_id (
             school_name,
             board,
             marks,
@@ -130,7 +130,7 @@ const Applications = () => {
             cgpa_scale,
             passing_year
           ),
-          resume:student_id (
+          resume:resumes!student_id (
             file_url
           )
         `)

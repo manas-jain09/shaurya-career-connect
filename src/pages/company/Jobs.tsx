@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import JobDetailsDialog from '@/components/company/JobDetailsDialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
 const Jobs = () => {
@@ -126,19 +127,30 @@ const Jobs = () => {
                     {job.description}
                   </p>
                   
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div className="flex items-center">
-                      <CalendarClock size={16} className="mr-1 text-blue-500" />
-                      <span>{format(new Date(job.application_deadline), 'dd MMM yyyy')}</span>
+                  <div className="flex justify-between items-center">
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="flex items-center">
+                        <CalendarClock size={16} className="mr-1 text-blue-500" />
+                        <span>{format(new Date(job.application_deadline), 'dd MMM yyyy')}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Users size={16} className="mr-1 text-blue-500" />
+                        <span>{applicationCounts[job.id || ''] || 0} applications</span>
+                      </div>
+                      <div className="flex items-center">
+                        <UserCheck size={16} className="mr-1 text-blue-500" />
+                        <span>{selectedCounts[job.id || ''] || 0} selected</span>
+                      </div>
                     </div>
-                    <div className="flex items-center">
-                      <Users size={16} className="mr-1 text-blue-500" />
-                      <span>{applicationCounts[job.id || ''] || 0} applications</span>
-                    </div>
-                    <div className="flex items-center">
-                      <UserCheck size={16} className="mr-1 text-blue-500" />
-                      <span>{selectedCounts[job.id || ''] || 0} selected</span>
-                    </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleViewJob(job)}
+                      className="ml-2"
+                    >
+                      <Eye size={16} className="mr-1" /> Details
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -149,11 +161,9 @@ const Jobs = () => {
 
       {/* Job Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-2xl">
-          {currentJob && (
-            <JobDetailsDialog job={currentJob} />
-          )}
-        </DialogContent>
+        {currentJob && (
+          <JobDetailsDialog job={currentJob} />
+        )}
       </Dialog>
     </CompanyLayout>
   );
