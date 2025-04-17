@@ -9,7 +9,8 @@ import {
   FileCheck, 
   BarChart, 
   LogOut,
-  ClipboardList
+  ClipboardList,
+  MessageCircle
 } from 'lucide-react';
 
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -23,6 +24,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Applications', path: '/admin/applications', icon: ClipboardList },
     { name: 'Students', path: '/admin/students', icon: Users },
     { name: 'Reports', path: '/admin/reports', icon: BarChart },
+    { name: 'Chat', path: '/admin/chat', icon: MessageCircle },
   ];
 
   const isActive = (path: string) => location.pathname === path;

@@ -1,1 +1,8 @@
+
 project_id = "ydfzjpzwbgyrtjxslsbs"
+
+[functions.admin-chat]
+verify_jwt = true
+
+[functions.setup]
+verify_jwt = true
