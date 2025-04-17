@@ -516,6 +516,7 @@ const Applications = () => {
                       )}
                     </div>
                   </TableHead>
+                  <TableHead>Resume</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -534,6 +535,20 @@ const Applications = () => {
                       <Badge className={getStatusBadgeClass(application.status)}>
                         {getStatusDisplay(application.status)}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {application.resume?.file_url ? (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => window.open(application.resume?.file_url, '_blank')}
+                        >
+                          <Download size={16} className="mr-2" />
+                          Resume
+                        </Button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">No resume</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
