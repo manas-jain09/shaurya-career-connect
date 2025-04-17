@@ -107,6 +107,7 @@ const Applications = () => {
           created_at,
           updated_at,
           offer_letter_url,
+          resume_url,
           job:job_id (
             title,
             company_name,
@@ -175,19 +176,12 @@ const Applications = () => {
         .select('*')
         .eq('student_id', studentId)
         .maybeSingle();
-        
-      const { data: resumeData, error: resumeError } = await supabase
-        .from('resumes')
-        .select('*')
-        .eq('student_id', studentId)
-        .maybeSingle();
       
       const completeApplication: JobApplication = {
         ...application,
         graduation_details: gradError ? null : gradData,
         class_x_details: classXError ? null : classXData,
-        class_xii_details: classXIIError ? null : classXIIData,
-        resume: resumeError ? null : resumeData
+        class_xii_details: classXIIError ? null : classXIIData
       };
       
       setSelectedStudent(completeApplication);
@@ -608,11 +602,11 @@ const Applications = () => {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {application.resume?.file_url ? (
+                      {application.resume_url ? (
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => window.open(application.resume?.file_url, '_blank')}
+                          onClick={() => window.open(application.resume_url, '_blank')}
                         >
                           <Download size={16} className="mr-2" />
                           Resume
