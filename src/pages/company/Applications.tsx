@@ -460,6 +460,14 @@ const Applications = () => {
     }
   }, [selectAll, filteredApplications]);
 
+  const handleOfferLetterUpload = async (applicationId: string, url: string) => {
+    setApplications(prev => 
+      prev.map(app => 
+        app.id === applicationId ? { ...app, offer_letter_url: url } : app
+      )
+    );
+  };
+
   return (
     <CompanyLayout>
       <div className="flex justify-between items-center mb-6">
@@ -574,6 +582,7 @@ const Applications = () => {
                     </div>
                   </TableHead>
                   <TableHead>Resume</TableHead>
+                  <TableHead>Offer Letter</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -610,6 +619,13 @@ const Applications = () => {
                       ) : (
                         <span className="text-gray-400 text-sm">No resume</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <OfferLetterUpload 
+                        applicationId={application.id as string}
+                        currentUrl={application.offer_letter_url}
+                        onUploadComplete={(url) => handleOfferLetterUpload(application.id as string, url)}
+                      />
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
