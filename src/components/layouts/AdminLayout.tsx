@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -9,16 +9,12 @@ import {
   FileCheck, 
   BarChart, 
   LogOut,
-  ClipboardList,
-  Bell
+  ClipboardList
 } from 'lucide-react';
-import { useNotifications } from '@/hooks/useNotifications';
-import { Badge } from '@/components/ui/badge';
 
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
-  const { unreadCount } = useNotifications();
 
   const navLinks = [
     { name: 'Dashboard', path: '/admin/dashboard', icon: Home },
@@ -27,7 +23,6 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Applications', path: '/admin/applications', icon: ClipboardList },
     { name: 'Students', path: '/admin/students', icon: Users },
     { name: 'Reports', path: '/admin/reports', icon: BarChart },
-    { name: 'Notifications', path: '/admin/notifications', icon: Bell },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -47,17 +42,6 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <div className="text-sm text-gray-600">
               Welcome, <span className="font-medium">{user?.name || 'Admin'}</span>
             </div>
-            <Link to="/admin/notifications" className="relative">
-              <Bell size={20} className="text-gray-600 hover:text-shaurya-primary" />
-              {unreadCount > 0 && (
-                <Badge 
-                  className="absolute -top-2 -right-2 bg-red-500 text-white h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  variant="destructive"
-                >
-                  {unreadCount > 9 ? '9+' : unreadCount}
-                </Badge>
-              )}
-            </Link>
             <button onClick={logout} className="flex items-center text-gray-600 hover:text-red-500">
               <LogOut size={18} className="mr-1" /> Logout
             </button>
@@ -82,14 +66,6 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     >
                       <link.icon size={18} className="mr-2" />
                       {link.name}
-                      {link.name === 'Notifications' && unreadCount > 0 && (
-                        <Badge 
-                          className="ml-auto bg-red-500 text-white h-5 min-w-5 flex items-center justify-center p-0 text-xs"
-                          variant="destructive"
-                        >
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </Badge>
-                      )}
                     </Link>
                   </li>
                 ))}
