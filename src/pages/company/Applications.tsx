@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +35,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 
 const Applications = () => {
   const { user } = useAuth();
@@ -61,7 +67,6 @@ const Applications = () => {
       setIsLoading(true);
       console.log("Fetching jobs for company code:", user.companyCode);
       
-      // First, get all job IDs for this company
       const { data: jobsData, error: jobsError } = await supabase
         .from('job_postings')
         .select('id, title')
@@ -87,7 +92,6 @@ const Applications = () => {
       const jobIds = jobsData.map(job => job.id);
       console.log("Job IDs to fetch applications for:", jobIds);
       
-      // Fixed the query syntax - the asterisk needs to be a string
       const { data, error } = await supabase
         .from('job_applications')
         .select(`
@@ -123,7 +127,6 @@ const Applications = () => {
       
       console.log("Applications data retrieved:", data?.length || 0, data);
       
-      // Process and sanitize the data to match our interface
       const sanitizedData: JobApplication[] = (data || []).map((item: any) => {
         console.log("Processing application item:", item.id);
         return {
@@ -149,38 +152,32 @@ const Applications = () => {
 
   const handleViewProfile = async (application: JobApplication) => {
     try {
-      // Get the full application details including related education records
       const studentId = application.student_id;
       
-      // Fetch graduation details
       const { data: gradData, error: gradError } = await supabase
         .from('graduation_details')
         .select('*')
         .eq('student_id', studentId)
         .maybeSingle();
         
-      // Fetch class X details  
       const { data: classXData, error: classXError } = await supabase
         .from('class_x_details')
         .select('*')
         .eq('student_id', studentId)
         .maybeSingle();
         
-      // Fetch class XII details
       const { data: classXIIData, error: classXIIError } = await supabase
         .from('class_xii_details')
         .select('*')
         .eq('student_id', studentId)
         .maybeSingle();
         
-      // Fetch resume
       const { data: resumeData, error: resumeError } = await supabase
         .from('resumes')
         .select('*')
         .eq('student_id', studentId)
         .maybeSingle();
       
-      // Create a complete application object with all details
       const completeApplication: JobApplication = {
         ...application,
         graduation_details: gradError ? null : gradData,
@@ -321,52 +318,6 @@ const Applications = () => {
             </Button>
           </div>
         )}
-
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold mb-3">Update Application Status</h3>
-          <RadioGroup 
-            value={selectedStudent.status} 
-            onValueChange={(value) => {
-              if (selectedStudent.id) {
-                updateApplicationStatus(selectedStudent.id, value as JobApplicationStatus);
-              }
-            }}
-            className="grid grid-cols-2 gap-2"
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="applied" id="applied" />
-              <Label htmlFor="applied">Applied</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="under_review" id="under_review" />
-              <Label htmlFor="under_review">Under Review</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="shortlisted" id="shortlisted" />
-              <Label htmlFor="shortlisted">Shortlisted</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="selected" id="selected" />
-              <Label htmlFor="selected">Selected</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="rejected" id="rejected" />
-              <Label htmlFor="rejected">Rejected</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="internship" id="internship" />
-              <Label htmlFor="internship">Internship</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="ppo" id="ppo" />
-              <Label htmlFor="ppo">PPO</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="placement" id="placement" />
-              <Label htmlFor="placement">Placement</Label>
-            </div>
-          </RadioGroup>
-        </div>
       </div>
     );
   };
@@ -386,7 +337,6 @@ const Applications = () => {
         )
       );
       
-      // Update the selected student if it's the one being modified
       if (selectedStudent && selectedStudent.id === applicationId) {
         setSelectedStudent({
           ...selectedStudent,
@@ -428,6 +378,22 @@ const Applications = () => {
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const getStatusIcon = (status: JobApplicationStatus) => {
+    switch (status) {
+      case 'selected':
+      case 'internship':
+      case 'ppo':
+      case 'placement':
+        return <Check className="h-4 w-4 text-green-600" />;
+      case 'rejected':
+        return <X className="h-4 w-4 text-red-600" />;
+      case 'shortlisted':
+        return <Check className="h-4 w-4 text-blue-600" />;
+      default:
+        return null;
+    }
+  };
+
   const toggleSortOrder = () => {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
   };
@@ -437,7 +403,7 @@ const Applications = () => {
       toggleSortOrder();
     } else {
       setSortField(field);
-      setSortOrder('desc'); // Default to descending when changing field
+      setSortOrder('desc');
     }
   };
 
@@ -581,33 +547,187 @@ const Applications = () => {
                               <Eye size={16} className="mr-1" /> View
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-4xl">
+                          <DialogContent className="max-h-[80vh]">
                             <DialogHeader>
                               <DialogTitle>
                                 Student Profile: {selectedStudent?.student_profile?.first_name} {selectedStudent?.student_profile?.last_name}
                               </DialogTitle>
                             </DialogHeader>
-                            {renderStudentDetails()}
+                            <ScrollArea className="max-h-[calc(80vh-8rem)]">
+                              {selectedStudent && (
+                                <div className="space-y-6 p-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                      <h3 className="text-lg font-semibold mb-2">Personal Information</h3>
+                                      <div className="space-y-2">
+                                        <div>
+                                          <span className="font-medium">Name: </span>
+                                          <span>{selectedStudent.student_profile?.first_name} {selectedStudent.student_profile?.last_name}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Department: </span>
+                                          <span>{selectedStudent.student_profile?.department || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Phone: </span>
+                                          <span>{selectedStudent.student_profile?.phone || 'N/A'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <h3 className="text-lg font-semibold mb-2">Class X Details</h3>
+                                      <div className="space-y-2">
+                                        <div>
+                                          <span className="font-medium">School: </span>
+                                          <span>{selectedStudent.class_x_details?.school_name || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Board: </span>
+                                          <span>{selectedStudent.class_x_details?.board || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Marks: </span>
+                                          <span>
+                                            {selectedStudent.class_x_details?.marks || 'N/A'}
+                                            {selectedStudent.class_x_details?.is_cgpa ? 
+                                              ` CGPA${selectedStudent.class_x_details?.cgpa_scale ? ` (out of ${selectedStudent.class_x_details.cgpa_scale})` : ''}` : 
+                                              '%'
+                                            }
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Passing Year: </span>
+                                          <span>{selectedStudent.class_x_details?.passing_year || 'N/A'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <h3 className="text-lg font-semibold mb-2">Class XII Details</h3>
+                                      <div className="space-y-2">
+                                        <div>
+                                          <span className="font-medium">School: </span>
+                                          <span>{selectedStudent.class_xii_details?.school_name || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Board: </span>
+                                          <span>{selectedStudent.class_xii_details?.board || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Marks: </span>
+                                          <span>
+                                            {selectedStudent.class_xii_details?.marks || 'N/A'}
+                                            {selectedStudent.class_xii_details?.is_cgpa ? 
+                                              ` CGPA${selectedStudent.class_xii_details?.cgpa_scale ? ` (out of ${selectedStudent.class_xii_details.cgpa_scale})` : ''}` : 
+                                              '%'
+                                            }
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Passing Year: </span>
+                                          <span>{selectedStudent.class_xii_details?.passing_year || 'N/A'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <h3 className="text-lg font-semibold mb-2">Graduation Details</h3>
+                                      <div className="space-y-2">
+                                        <div>
+                                          <span className="font-medium">College: </span>
+                                          <span>{selectedStudent.graduation_details?.college_name || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Course: </span>
+                                          <span>{selectedStudent.graduation_details?.course || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Marks: </span>
+                                          <span>
+                                            {selectedStudent.graduation_details?.marks || 'N/A'}
+                                            {selectedStudent.graduation_details?.is_cgpa ? 
+                                              ` CGPA${selectedStudent.graduation_details?.cgpa_scale ? ` (out of ${selectedStudent.graduation_details.cgpa_scale})` : ''}` : 
+                                              '%'
+                                            }
+                                          </span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Passing Year: </span>
+                                          <span>{selectedStudent.graduation_details?.passing_year || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="font-medium">Backlog: </span>
+                                          <span>{selectedStudent.graduation_details?.has_backlog ? 'Yes' : 'No'}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </ScrollArea>
                           </DialogContent>
                         </Dialog>
                         
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="text-green-600 border-green-600 hover:bg-green-50"
-                          onClick={() => application.id && updateApplicationStatus(application.id, 'selected')}
-                        >
-                          <Check size={16} />
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="text-red-600 border-red-600 hover:bg-red-50"
-                          onClick={() => application.id && updateApplicationStatus(application.id, 'rejected')}
-                        >
-                          <X size={16} />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              Update Status
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'applied')}
+                            >
+                              <span>Applied</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'under_review')}
+                            >
+                              <span>Under Review</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'shortlisted')}
+                            >
+                              <span>Shortlisted</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'selected')}
+                              className="text-green-600"
+                            >
+                              <Check className="mr-2 h-4 w-4" />
+                              <span>Selected</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'internship')}
+                              className="text-green-600"
+                            >
+                              <Check className="mr-2 h-4 w-4" />
+                              <span>Internship</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'ppo')}
+                              className="text-green-600"
+                            >
+                              <Check className="mr-2 h-4 w-4" />
+                              <span>PPO</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'placement')}
+                              className="text-green-600"
+                            >
+                              <Check className="mr-2 h-4 w-4" />
+                              <span>Placement</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => application.id && updateApplicationStatus(application.id, 'rejected')}
+                              className="text-red-600"
+                            >
+                              <X className="mr-2 h-4 w-4" />
+                              <span>Rejected</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
