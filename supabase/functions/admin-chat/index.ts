@@ -29,6 +29,60 @@ async function queryDatabase(query: string) {
   return { data };
 }
 
+async function validateGeminiApiKey() {
+  if (!GEMINI_API_KEY) {
+    return { 
+      valid: false, 
+      errorMessage: 'GEMINI_API_KEY is not set in environment variables' 
+    };
+  }
+  
+  try {
+    // Simple test call to Gemini API to validate the key
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${GEMINI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [{ text: "Hello" }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 10,
+        },
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Gemini API key validation failed (Status ${response.status}):`, errorText);
+      
+      if (response.status === 401) {
+        return { 
+          valid: false, 
+          errorMessage: 'The Gemini API key is invalid or has expired. Please update it in your Supabase secrets.' 
+        };
+      }
+      
+      return { 
+        valid: false, 
+        errorMessage: 'Failed to validate Gemini API key. Please check the key and try again.' 
+      };
+    }
+    
+    return { valid: true, errorMessage: null };
+  } catch (error) {
+    console.error('Error validating Gemini API key:', error);
+    return { 
+      valid: false, 
+      errorMessage: 'Error validating Gemini API key: ' + (error.message || 'Unknown error') 
+    };
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -36,13 +90,15 @@ serve(async (req) => {
   }
 
   try {
-    if (!GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY is not set in environment variables');
+    // Validate Gemini API key
+    const keyValidation = await validateGeminiApiKey();
+    if (!keyValidation.valid) {
+      console.error(keyValidation.errorMessage);
       return new Response(
         JSON.stringify({ 
-          error: 'Gemini API key is not configured. Please add a valid API key to your Supabase edge function secrets.' 
+          error: keyValidation.errorMessage
         }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

@@ -15,6 +15,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { MessageCircle, Send, Bot, User, RefreshCw, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter
+} from '@/components/ui/dialog';
 
 interface Message {
   id: string;
@@ -36,6 +44,7 @@ const AdminChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
+  const [showApiKeyError, setShowApiKeyError] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -52,6 +61,7 @@ const AdminChat = () => {
     
     // Clear any previous error message
     setErrorMessage(null);
+    setShowApiKeyError(false);
     
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -85,6 +95,12 @@ const AdminChat = () => {
       
       if (data.error) {
         console.error('API returned error:', data.error);
+        
+        // Check if it's an API key authentication error
+        if (data.error.includes("API key") || data.error.includes("Authentication failed")) {
+          setShowApiKeyError(true);
+        }
+        
         throw new Error(data.error);
       }
       
@@ -134,6 +150,10 @@ const AdminChat = () => {
       }
     }
     setErrorMessage(null);
+  };
+
+  const closeApiKeyDialog = () => {
+    setShowApiKeyError(false);
   };
 
   return (
@@ -234,6 +254,32 @@ const AdminChat = () => {
           </div>
         </CardFooter>
       </Card>
+
+      <Dialog open={showApiKeyError} onOpenChange={closeApiKeyDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>API Key Configuration Required</DialogTitle>
+            <DialogDescription>
+              The Gemini API key appears to be invalid or missing. Please add a valid API key to your Supabase edge function secrets.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              To set up your Gemini API key:
+            </p>
+            <ol className="list-decimal list-inside mt-2 space-y-1 text-sm">
+              <li>Go to the Supabase dashboard</li>
+              <li>Navigate to Project Settings &gt; API</li>
+              <li>Under "Edge Function Secrets", add a secret named <code className="bg-muted px-1 py-0.5 rounded">GEMINI_API_KEY</code></li>
+              <li>Enter your valid Gemini API key value</li>
+              <li>Save your changes</li>
+            </ol>
+          </div>
+          <DialogFooter>
+            <Button onClick={closeApiKeyDialog}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
