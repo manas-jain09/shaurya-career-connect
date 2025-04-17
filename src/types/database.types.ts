@@ -1,3 +1,4 @@
+
 export interface StudentProfile {
   id?: string;
   user_id: string;
@@ -125,7 +126,7 @@ export interface JobApplication {
     phone: string;
     is_verified: boolean;
     department?: string;
-  };
+  } | null;
   graduation_details?: {
     college_name?: string;
     course?: string;
@@ -134,7 +135,7 @@ export interface JobApplication {
     is_cgpa?: boolean;
     cgpa_scale?: number;
     has_backlog?: boolean;
-  };
+  } | null;
   class_x_details?: {
     school_name: string;
     board: string;
@@ -142,7 +143,7 @@ export interface JobApplication {
     is_cgpa: boolean;
     cgpa_scale?: number;
     passing_year: number;
-  };
+  } | null;
   class_xii_details?: {
     school_name: string;
     board: string;
@@ -150,10 +151,10 @@ export interface JobApplication {
     is_cgpa: boolean;
     cgpa_scale?: number;
     passing_year: number;
-  };
+  } | null;
   resume?: {
     file_url: string;
-  };
+  } | null;
 }
 
 export interface Notification {

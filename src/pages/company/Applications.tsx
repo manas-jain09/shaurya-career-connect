@@ -124,7 +124,20 @@ const Applications = () => {
         
       if (error) throw error;
       
-      setApplications(data as JobApplication[]);
+      // Process and sanitize the data to match our interface
+      const sanitizedData: JobApplication[] = (data || []).map((item: any) => {
+        // Handle any potentially missing nested objects or error objects
+        return {
+          ...item,
+          student_profile: item.student_profile || null,
+          graduation_details: item.graduation_details || null,
+          class_x_details: item.class_x_details && !item.class_x_details.error ? item.class_x_details : null,
+          class_xii_details: item.class_xii_details && !item.class_xii_details.error ? item.class_xii_details : null,
+          resume: item.resume && !item.resume.error ? item.resume : null
+        };
+      });
+      
+      setApplications(sanitizedData);
     } catch (error) {
       console.error('Error fetching applications:', error);
       toast.error('Failed to load applications');
@@ -330,6 +343,14 @@ const Applications = () => {
         )
       );
       
+      // Update the selected student if it's the one being modified
+      if (selectedStudent && selectedStudent.id === applicationId) {
+        setSelectedStudent({
+          ...selectedStudent,
+          status: newStatus
+        });
+      }
+      
       toast.success('Application status updated successfully');
     } catch (error) {
       console.error('Error updating status:', error);
@@ -488,7 +509,7 @@ const Applications = () => {
                       {application.student_profile?.first_name} {application.student_profile?.last_name}
                     </TableCell>
                     <TableCell>
-                      {new Date(application.created_at || '').toLocaleDateString()}
+                      {application.created_at ? new Date(application.created_at).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell>{application.job?.title}</TableCell>
                     <TableCell>{application.student_profile?.department || 'N/A'}</TableCell>
