@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,7 +55,9 @@ const Applications = () => {
   const [jobFilter, setJobFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<JobApplicationStatus | 'all'>('all');
   const [availableJobs, setAvailableJobs] = useState<{id: string, title: string}[]>([]);
-  
+  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+
   const fetchApplications = async () => {
     if (!user?.companyCode) {
       console.error("No company code found in user object:", user);
@@ -421,6 +424,42 @@ const Applications = () => {
     return searchMatch && jobMatch && statusMatch;
   });
 
+  const toggleApplicationSelection = (id: string) => {
+    setSelectedApplications(prev => 
+      prev.includes(id) 
+        ? prev.filter(appId => appId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleBulkResumeDownload = () => {
+    const selectedAppsWithResumes = filteredApplications
+      .filter(app => 
+        selectedApplications.includes(app.id as string) && 
+        app.resume?.file_url
+      );
+
+    if (selectedAppsWithResumes.length === 0) {
+      toast.info('No resumes available for selected applications');
+      return;
+    }
+
+    selectedAppsWithResumes.forEach(app => {
+      if (app.resume?.file_url) {
+        window.open(app.resume.file_url, '_blank');
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (selectAll) {
+      const allIds = filteredApplications.map(app => app.id as string);
+      setSelectedApplications(allIds);
+    } else {
+      setSelectedApplications([]);
+    }
+  }, [selectAll, filteredApplications]);
+
   return (
     <CompanyLayout>
       <div className="flex justify-between items-center mb-6">
@@ -494,10 +533,28 @@ const Applications = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            <div className="flex items-center mb-4">
+              {selectedApplications.length > 0 && (
+                <Button 
+                  variant="outline" 
+                  className="mr-2"
+                  onClick={handleBulkResumeDownload}
+                >
+                  <Download size={16} className="mr-2" />
+                  Download {selectedApplications.length} Resumes
+                </Button>
+              )}
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student Name</TableHead>
+                  <TableHead className="w-10">
+                    <Checkbox 
+                      checked={selectAll} 
+                      onCheckedChange={() => setSelectAll(!selectAll)}
+                      aria-label="Select all applications"
+                    />
+                  </TableHead>
                   <TableHead>
                     <div className="flex items-center cursor-pointer" onClick={() => handleSortFieldChange('created_at')}>
                       Applied Date
@@ -523,8 +580,12 @@ const Applications = () => {
               <TableBody>
                 {filteredApplications.map((application) => (
                   <TableRow key={application.id}>
-                    <TableCell className="font-medium">
-                      {application.student_profile?.first_name} {application.student_profile?.last_name}
+                    <TableCell>
+                      <Checkbox 
+                        checked={selectedApplications.includes(application.id as string)}
+                        onCheckedChange={() => toggleApplicationSelection(application.id as string)}
+                        aria-label={`Select application for ${application.student_profile?.first_name}`}
+                      />
                     </TableCell>
                     <TableCell>
                       {application.created_at ? new Date(application.created_at).toLocaleDateString() : 'N/A'}
