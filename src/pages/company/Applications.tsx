@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import CompanyLayout from '@/components/layouts/CompanyLayout';
 import { 
@@ -49,10 +48,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
 
+interface ExtendedJobApplication extends JobApplication {
+  job?: {
+    title: string;
+    company_name: string;
+    location: string;
+    package: string;
+  };
+  student_profile?: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    is_verified: boolean;
+    department?: string;
+  };
+  graduation_details?: {
+    course?: string;
+    passing_year?: number;
+    college_name?: string;
+  };
+}
+
 const Applications = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [applications, setApplications] = useState<JobApplication[]>([]);
+  const [applications, setApplications] = useState<ExtendedJobApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJob, setFilterJob] = useState<string>('all');
@@ -60,7 +80,7 @@ const Applications = () => {
   const [sortField, setSortField] = useState<string>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [jobs, setJobs] = useState<{ id: string, title: string }[]>([]);
-  const [currentApplication, setCurrentApplication] = useState<JobApplication | null>(null);
+  const [currentApplication, setCurrentApplication] = useState<ExtendedJobApplication | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [newStatus, setNewStatus] = useState<JobApplicationStatus>('applied');
@@ -75,7 +95,6 @@ const Applications = () => {
     
     setLoading(true);
     try {
-      // Fetch jobs for this company
       const { data: jobsData, error: jobsError } = await supabase
         .from('job_postings')
         .select('id, title')
@@ -92,7 +111,6 @@ const Applications = () => {
         return;
       }
       
-      // Build query for applications
       let query = supabase
         .from('job_applications')
         .select(`
@@ -109,32 +127,23 @@ const Applications = () => {
             phone,
             is_verified,
             department
-          ),
-          graduation_details:student_id (
-            course,
-            passing_year,
-            college_name
           )
         `)
         .in('job_id', jobIds);
 
-      // Apply filtering by job
       if (filterJob !== 'all') {
         query = query.eq('job_id', filterJob);
       }
 
-      // Apply filtering by status
       if (filterStatus !== 'all') {
         query = query.eq('status', filterStatus);
       }
 
-      // Apply sorting
       if (sortField === 'date') {
         query = query.order('created_at', { ascending: sortDirection === 'asc' });
       } else if (sortField === 'status') {
         query = query.order('status', { ascending: sortDirection === 'asc' });
       } else if (sortField === 'name') {
-        // For name sorting, we'll do it after fetching
         query = query.order('created_at', { ascending: false });
       }
 
@@ -142,13 +151,35 @@ const Applications = () => {
 
       if (error) throw error;
 
-      // Process data
-      const typedApplications = data?.map(app => ({
+      const applications = data || [];
+      const studentIds = applications.map(app => app.student_id);
+      
+      const { data: gradData, error: gradError } = await supabase
+        .from('graduation_details')
+        .select('student_id, course, passing_year, college_name')
+        .in('student_id', studentIds);
+        
+      if (gradError) throw gradError;
+      
+      const gradMap = new Map();
+      (gradData || []).forEach(grad => {
+        gradMap.set(grad.student_id, {
+          course: grad.course,
+          passing_year: grad.passing_year,
+          college_name: grad.college_name
+        });
+      });
+      
+      const typedApplications: ExtendedJobApplication[] = applications.map(app => ({
         ...app,
-        status: app.status as JobApplicationStatus
-      })) || [];
+        status: app.status as JobApplicationStatus,
+        graduation_details: gradMap.get(app.student_id) || {
+          course: undefined,
+          passing_year: undefined,
+          college_name: undefined
+        }
+      }));
 
-      // If sorting by name, do it manually since it spans relationships
       if (sortField === 'name') {
         typedApplications.sort((a, b) => {
           const nameA = `${a.student_profile?.first_name} ${a.student_profile?.last_name}`.toLowerCase();
@@ -179,12 +210,12 @@ const Applications = () => {
     }
   };
 
-  const handleViewApplication = (application: JobApplication) => {
+  const handleViewApplication = (application: ExtendedJobApplication) => {
     setCurrentApplication(application);
     setShowDetailsDialog(true);
   };
 
-  const handleUpdateStatus = (application: JobApplication) => {
+  const handleUpdateStatus = (application: ExtendedJobApplication) => {
     setCurrentApplication(application);
     setNewStatus(application.status);
     setStatusNote(application.admin_notes || '');
@@ -210,7 +241,6 @@ const Applications = () => {
         description: 'Application status updated successfully',
       });
 
-      // Update local state
       setApplications(applications.map(app => 
         app.id === currentApplication.id 
           ? { ...app, status: newStatus, admin_notes: statusNote } 
@@ -419,7 +449,6 @@ const Applications = () => {
         )}
       </div>
 
-      {/* Application Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -544,7 +573,6 @@ const Applications = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Status Update Dialog */}
       <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>

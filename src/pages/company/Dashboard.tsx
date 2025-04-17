@@ -1,10 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import CompanyLayout from '@/components/layouts/CompanyLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { JobPosting } from '@/types/database.types';
+import { JobPosting, JobPostingStatus } from '@/types/database.types';
 import { Building2, Users, CheckSquare, Clock } from 'lucide-react';
 
 const Dashboard = () => {
@@ -40,6 +39,14 @@ const Dashboard = () => {
 
         if (recentJobsError) throw recentJobsError;
         
+        // Transform the data to match JobPosting type
+        const typedRecentJobs = (recentJobsData || []).map(job => ({
+          ...job,
+          status: job.status as JobPostingStatus,
+          eligible_courses: job.eligible_courses as string[] | null,
+          eligible_passing_years: job.eligible_passing_years as number[] | null
+        }));
+        
         // Get job IDs for this company
         const jobIds = jobs?.map(job => job.id) || [];
         
@@ -74,7 +81,7 @@ const Dashboard = () => {
           setApplicationsCount(totalApps || 0);
           setSelectedCount(selectedApps || 0);
           setPendingCount(pendingApps || 0);
-          setRecentJobs(recentJobsData || []);
+          setRecentJobs(typedRecentJobs);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import CompanyLayout from '@/components/layouts/CompanyLayout';
 import { 
@@ -30,17 +29,22 @@ import { format } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import JobDetails from '@/components/admin/JobDetails';
 
+interface JobPostingWithCounts extends JobPosting {
+  application_count?: number;
+  selected_count?: number;
+}
+
 const CompanyJobs = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [jobs, setJobs] = useState<JobPosting[]>([]);
+  const [jobs, setJobs] = useState<JobPostingWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortField, setSortField] = useState<string>('deadline');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const [currentJob, setCurrentJob] = useState<JobPosting | null>(null);
+  const [currentJob, setCurrentJob] = useState<JobPostingWithCounts | null>(null);
   
   useEffect(() => {
     fetchJobs();
@@ -56,12 +60,10 @@ const CompanyJobs = () => {
         .select('*')
         .eq('company_code', user.companyCode);
 
-      // Apply filter if not 'all'
       if (filterStatus !== 'all') {
         query = query.eq('status', filterStatus);
       }
 
-      // Apply sorting
       if (sortField === 'deadline') {
         query = query.order('application_deadline', { ascending: sortDirection === 'asc' });
       } else if (sortField === 'created') {
@@ -74,17 +76,21 @@ const CompanyJobs = () => {
 
       if (error) throw error;
 
-      // Add application counts
-      const jobIds = data?.map(job => job.id) || [];
-      const jobsWithCounts = [...(data || [])];
+      const typedData = data?.map(job => ({
+        ...job,
+        status: job.status as JobPostingStatus,
+        eligible_courses: job.eligible_courses as string[] | null,
+        eligible_passing_years: job.eligible_passing_years as number[] | null
+      })) || [];
+
+      const jobIds = typedData?.map(job => job.id) || [];
+      const jobsWithCounts: JobPostingWithCounts[] = [...typedData];
       
       if (jobIds.length > 0) {
-        // Get application counts for each job
         for (let i = 0; i < jobsWithCounts.length; i++) {
           const jobId = jobsWithCounts[i].id;
           if (!jobId) continue;
           
-          // Get total applications
           const { count: totalApps, error: countError } = await supabase
             .from('job_applications')
             .select('*', { count: 'exact', head: true })
@@ -92,7 +98,6 @@ const CompanyJobs = () => {
             
           if (countError) throw countError;
           
-          // Get selected candidates
           const { count: selectedCount, error: selectedError } = await supabase
             .from('job_applications')
             .select('*', { count: 'exact', head: true })
@@ -106,13 +111,7 @@ const CompanyJobs = () => {
         }
       }
 
-      // Cast the status from string to JobPostingStatus
-      const typedJobs = jobsWithCounts?.map(job => ({
-        ...job,
-        status: job.status as JobPostingStatus
-      })) || [];
-
-      setJobs(typedJobs);
+      setJobs(jobsWithCounts);
     } catch (error) {
       console.error('Error fetching jobs:', error);
       toast({
@@ -134,7 +133,7 @@ const CompanyJobs = () => {
     }
   };
 
-  const handleViewJob = (job: JobPosting) => {
+  const handleViewJob = (job: JobPostingWithCounts) => {
     setCurrentJob(job);
     setShowDetailsDialog(true);
   };
@@ -158,7 +157,6 @@ const CompanyJobs = () => {
     }
   };
 
-  // Check if a job is past deadline
   const isPastDeadline = (deadline: string) => {
     return new Date(deadline) < new Date();
   };
@@ -283,7 +281,6 @@ const CompanyJobs = () => {
         )}
       </div>
 
-      {/* Job Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-2xl">
           {currentJob && (

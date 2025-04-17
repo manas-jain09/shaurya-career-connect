@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -127,6 +126,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
     try {
       const jobData = {
         ...values,
+        // Convert Date to string format for database
+        application_deadline: format(values.application_deadline, 'yyyy-MM-dd'),
         // Find the company_id if a company was selected
         company_id: selectedCompany || null,
       };
