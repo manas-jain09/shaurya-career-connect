@@ -145,6 +145,20 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
     });
   };
 
+  const notifyEligibleStudents = async (jobId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('notify-eligible-students', {
+        body: { jobId }
+      });
+      
+      if (error) throw error;
+      
+      console.log('Notification process started for job:', jobId);
+    } catch (error) {
+      console.error('Error notifying eligible students:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -169,6 +183,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
         eligible_passing_years: formData.eligible_passing_years || [],
         updated_at: new Date().toISOString()
       };
+
+      let jobId = job?.id;
 
       if (job?.id) {
         const { error } = await supabase
@@ -213,11 +229,17 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
 
         if (error) throw error;
 
+        jobId = data?.[0]?.id;
+        
         console.log("Job created successfully:", data);
         toast({
           title: 'Success',
           description: 'Job posting created successfully'
         });
+      }
+
+      if (jobId && formData.status === 'active') {
+        await notifyEligibleStudents(jobId);
       }
 
       onSave();
