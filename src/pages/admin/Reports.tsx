@@ -788,8 +788,7 @@ const Reports = () => {
       'Package': app.job?.package || 'N/A',
       'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
       'Applied Date': app.created_at ? new Date(app.created_at).toLocaleDateString() : 'N/A',
-      'Admin Notes': app.admin_notes || 'N/A',
-      'Offer Letter': app.offer_letter_url ? 'Available' : 'Not uploaded'
+      'Admin Notes': app.admin_notes || 'N/A'
     }));
   };
 
@@ -1267,20 +1266,7 @@ const Reports = () => {
                                   </div>
                                 </TableCell>
                                 <TableCell>{application.job?.package || 'N/A'}</TableCell>
-                                <TableCell>
-                                  {application.offer_letter_url ? (
-                                    <a 
-                                      href={application.offer_letter_url} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-blue-600 hover:underline text-sm"
-                                    >
-                                      View
-                                    </a>
-                                  ) : (
-                                    <span className="text-gray-400 text-sm">None</span>
-                                  )}
-                                </TableCell>
+                               
                               </TableRow>
                             ))
                           )}
