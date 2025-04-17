@@ -42,6 +42,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const Applications = () => {
   const { user } = useAuth();
@@ -55,6 +56,12 @@ const Applications = () => {
   const [statusFilter, setStatusFilter] = useState<JobApplicationStatus | 'all'>('all');
   const [availableJobs, setAvailableJobs] = useState<{id: string, title: string}[]>([]);
   
+  // Add new state for bulk selections
+  const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
+  const [selectAll, setSelectAll] = useState(false);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [batchStatus, setBatchStatus] = useState<JobApplicationStatus>('applied');
+
   const fetchApplications = async () => {
     if (!user?.companyCode) {
       console.error("No company code found in user object:", user);
@@ -115,6 +122,9 @@ const Applications = () => {
             department,
             phone,
             is_verified
+          ),
+          resume:resume_id (
+            file_url
           )
         `)
         .in('job_id', jobIds)
@@ -132,7 +142,8 @@ const Applications = () => {
         return {
           ...item,
           student_profile: item.student_profile || null,
-          job: item.job || null
+          job: item.job || null,
+          resume: item.resume || null
         };
       });
       
@@ -421,13 +432,114 @@ const Applications = () => {
     return searchMatch && jobMatch && statusMatch;
   });
 
+  const toggleApplicationSelection = (id: string) => {
+    setSelectedApplicationIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(appId => appId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    const newSelectAll = !selectAll;
+    setSelectAll(newSelectAll);
+    if (newSelectAll) {
+      const visibleIds = filteredApplications.map(app => app.id as string);
+      setSelectedApplicationIds(visibleIds);
+    } else {
+      setSelectedApplicationIds([]);
+    }
+  };
+
+  const handleBulkDownload = () => {
+    selectedApplicationIds.forEach(appId => {
+      const application = applications.find(app => app.id === appId);
+      if (application?.resume?.file_url) {
+        window.open(application.resume.file_url, '_blank');
+      }
+    });
+  };
+
+  const handleBatchUpdateStatus = async (newStatus: JobApplicationStatus) => {
+    try {
+      for (const appId of selectedApplicationIds) {
+        await supabase
+          .from('job_applications')
+          .update({ status: newStatus })
+          .eq('id', appId);
+      }
+
+      // Update UI
+      setApplications(prev =>
+        prev.map(app =>
+          selectedApplicationIds.includes(app.id as string)
+            ? { ...app, status: newStatus }
+            : app
+        )
+      );
+
+      setSelectedApplicationIds([]);
+      setSelectAll(false);
+      toast.success('Successfully updated application statuses');
+    } catch (error) {
+      console.error('Error updating statuses:', error);
+      toast.error('Failed to update application statuses');
+    }
+  };
+
   return (
     <CompanyLayout>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Applications</h1>
-        <Button onClick={fetchApplications} variant="outline">
-          Refresh Data
-        </Button>
+        
+        {selectedApplicationIds.length > 0 && (
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleBulkDownload}
+              className="flex items-center"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Download Selected Resumes
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="default">
+                  Update Selected Status
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('applied')}>
+                  Applied
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('under_review')}>
+                  Under Review
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('shortlisted')}>
+                  Shortlisted
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('selected')}>
+                  Selected
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('rejected')}>
+                  Rejected
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('internship')}>
+                  Internship
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('ppo')}>
+                  PPO
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleBatchUpdateStatus('placement')}>
+                  Placement
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-lg p-6 shadow mb-6">
@@ -497,6 +609,13 @@ const Applications = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox 
+                      checked={selectAll} 
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all applications"
+                    />
+                  </TableHead>
                   <TableHead>Student Name</TableHead>
                   <TableHead>
                     <div className="flex items-center cursor-pointer" onClick={() => handleSortFieldChange('created_at')}>
@@ -508,20 +627,24 @@ const Applications = () => {
                   </TableHead>
                   <TableHead>Job Position</TableHead>
                   <TableHead>Department</TableHead>
-                  <TableHead>
-                    <div className="flex items-center cursor-pointer" onClick={() => handleSortFieldChange('status')}>
-                      Status
-                      {sortField === 'status' && (
-                        sortOrder === 'asc' ? <SortAsc size={16} className="ml-1" /> : <SortDesc size={16} className="ml-1" />
-                      )}
-                    </div>
-                  </TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Resume</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredApplications.map((application) => (
-                  <TableRow key={application.id}>
+                  <TableRow 
+                    key={application.id}
+                    className={selectedApplicationIds.includes(application.id as string) ? "bg-muted/50" : ""}
+                  >
+                    <TableCell>
+                      <Checkbox 
+                        checked={selectedApplicationIds.includes(application.id as string)}
+                        onCheckedChange={() => toggleApplicationSelection(application.id as string)}
+                        aria-label={`Select application for ${application.student_profile?.first_name}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {application.student_profile?.first_name} {application.student_profile?.last_name}
                     </TableCell>
@@ -534,6 +657,21 @@ const Applications = () => {
                       <Badge className={getStatusBadgeClass(application.status)}>
                         {getStatusDisplay(application.status)}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {application.resume?.file_url ? (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => window.open(application.resume?.file_url, '_blank')}
+                          className="flex items-center text-blue-600 hover:text-blue-800"
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Resume
+                        </Button>
+                      ) : (
+                        <span className="text-gray-500 text-sm">Not available</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
@@ -677,50 +815,50 @@ const Applications = () => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'applied')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'applied')}
                             >
                               <span>Applied</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'under_review')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'under_review')}
                             >
                               <span>Under Review</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'shortlisted')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'shortlisted')}
                             >
                               <span>Shortlisted</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'selected')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'selected')}
                               className="text-green-600"
                             >
                               <Check className="mr-2 h-4 w-4" />
                               <span>Selected</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'internship')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'internship')}
                               className="text-green-600"
                             >
                               <Check className="mr-2 h-4 w-4" />
                               <span>Internship</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'ppo')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'ppo')}
                               className="text-green-600"
                             >
                               <Check className="mr-2 h-4 w-4" />
                               <span>PPO</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'placement')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'placement')}
                               className="text-green-600"
                             >
                               <Check className="mr-2 h-4 w-4" />
                               <span>Placement</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => application.id && updateApplicationStatus(application.id, 'rejected')}
+                              onClick={() => updateApplicationStatus(application.id as string, 'rejected')}
                               className="text-red-600"
                             >
                               <X className="mr-2 h-4 w-4" />
