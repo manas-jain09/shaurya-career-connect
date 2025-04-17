@@ -24,7 +24,8 @@ import {
   Clock,
   Filter,
   ArrowUpDown,
-  Briefcase
+  Briefcase,
+  Code
 } from 'lucide-react';
 import { JobPosting, JobPostingStatus } from '@/types/database.types';
 import { supabase } from '@/integrations/supabase/client';
@@ -158,7 +159,8 @@ const Jobs = () => {
     const titleMatch = job.title.toLowerCase().includes(searchTerm.toLowerCase());
     const companyMatch = job.company_name.toLowerCase().includes(searchTerm.toLowerCase());
     const locationMatch = job.location.toLowerCase().includes(searchTerm.toLowerCase());
-    return titleMatch || companyMatch || locationMatch;
+    const codeMatch = job.company_code?.toLowerCase().includes(searchTerm.toLowerCase());
+    return titleMatch || companyMatch || locationMatch || codeMatch;
   });
 
   const getStatusBadge = (status: string) => {
@@ -240,6 +242,7 @@ const Jobs = () => {
                       </TableHead>
                       <TableHead>Position</TableHead>
                       <TableHead>Location</TableHead>
+                      <TableHead>Company Code</TableHead>
                       <TableHead>Package</TableHead>
                       <TableHead>
                         <div className="flex items-center cursor-pointer" onClick={() => handleSort('deadline')}>
@@ -259,6 +262,16 @@ const Jobs = () => {
                         <TableCell className="font-medium">{job.company_name}</TableCell>
                         <TableCell>{job.title}</TableCell>
                         <TableCell>{job.location}</TableCell>
+                        <TableCell>
+                          {job.company_code && (
+                            <div className="flex items-center">
+                              <Code size={14} className="mr-2 text-gray-500" />
+                              <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+                                {job.company_code}
+                              </span>
+                            </div>
+                          )}
+                        </TableCell>
                         <TableCell>{job.package}</TableCell>
                         <TableCell>
                           <div className="flex items-center">

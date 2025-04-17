@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { X, Code } from 'lucide-react';
 
 interface JobFormProps {
   job?: JobPosting | null;
@@ -45,6 +46,8 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
     eligible_passing_years: [],
     allow_backlog: false,
     status: 'active',
+    company_code: undefined,
+    company_id: undefined,
   });
 
   const [saving, setSaving] = useState(false);
@@ -240,6 +243,23 @@ const JobForm: React.FC<JobFormProps> = ({ job, onSave, onCancel }) => {
           <h2 className="text-xl font-bold">{job ? 'Edit Job Posting' : 'Create New Job Posting'}</h2>
           <p className="text-gray-600">Fill in the details for this job opportunity</p>
         </div>
+
+        {job?.company_code && (
+          <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+            <div className="flex items-center space-x-2">
+              <Code size={18} className="text-gray-500" />
+              <div>
+                <h3 className="text-sm font-medium">Company Access Code</h3>
+                <p className="text-xs text-gray-500">Companies can use this code to access their job posts</p>
+              </div>
+              <div className="ml-auto">
+                <span className="font-mono text-sm bg-white px-3 py-1 rounded border">
+                  {job.company_code}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Job Basic Details */}

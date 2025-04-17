@@ -109,6 +109,33 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          company_code: string
+          created_at: string
+          id: string
+          password: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          company_code: string
+          created_at?: string
+          id?: string
+          password: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          company_code?: string
+          created_at?: string
+          id?: string
+          password?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       graduation_details: {
         Row: {
           cgpa_scale: number | null
@@ -218,6 +245,8 @@ export type Database = {
           allow_backlog: boolean
           application_deadline: string
           cgpa_scale: number | null
+          company_code: string | null
+          company_id: string | null
           company_name: string
           created_at: string
           description: string
@@ -240,6 +269,8 @@ export type Database = {
           allow_backlog?: boolean
           application_deadline: string
           cgpa_scale?: number | null
+          company_code?: string | null
+          company_id?: string | null
           company_name: string
           created_at?: string
           description: string
@@ -262,6 +293,8 @@ export type Database = {
           allow_backlog?: boolean
           application_deadline?: string
           cgpa_scale?: number | null
+          company_code?: string | null
+          company_id?: string | null
           company_name?: string
           created_at?: string
           description?: string
@@ -280,7 +313,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "job_postings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
