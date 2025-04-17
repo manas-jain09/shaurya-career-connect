@@ -26,7 +26,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [resume, setResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
+  const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(true); // Always set to true
   const [is_frozen, setIs_frozen] = useState<boolean>(false);
 
   // Use the provided profileId or get it from the user
@@ -52,21 +52,14 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
       if (profileError) throw profileError;
       setProfile(profileData);
 
-      // Determine job eligibility based on verification status, placement interest, and frozen status
-      // The student is eligible for jobs if they are verified AND they have chosen placement/internship AND not frozen
-      const isVerified = profileData.is_verified || false;
-      const placementInterest = profileData.placement_interest || '';
+      // Set frozen status from profile data
       const isFrozen = profileData.is_frozen || false;
-      const isBlocked = profileData.is_blocked || false;
+      setIs_frozen(isFrozen);
       
-      const isEligible = isVerified && 
-                         placementInterest === 'placement/internship' && 
-                         !isFrozen &&
-                         !isBlocked;
+      // Always set isEligibleForJobs to true
+      setIsEligibleForJobs(true);
       
-      setIsEligibleForJobs(isEligible);
-      
-      console.log('Eligibility check:', { isVerified, placementInterest, isFrozen, isBlocked, isEligible });
+      console.log('Profile data:', profileData);
 
       // Fetch Class X details
       const { data: classXData, error: classXError } = await supabase
@@ -129,7 +122,7 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
     isLoading,
     error,
     refreshData: fetchProfileData,
-    isEligibleForJobs,
+    isEligibleForJobs, // Always true regardless of profile status
     is_frozen
   };
 };

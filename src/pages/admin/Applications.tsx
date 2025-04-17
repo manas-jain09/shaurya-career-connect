@@ -203,15 +203,14 @@ const Applications = () => {
       'Location': app.job?.location,
       'Package': app.job?.package,
       'Status': app.status === 'ppo' ? 'PPO' : app.status.replace('_', ' '),
-      'Applied Date': new Date(app.created_at || '').toLocaleDateString(),
-      'Offer Letter': app.offer_letter_url || 'Not uploaded'
+      'Applied Date': new Date(app.created_at || '').toLocaleDateString()
     }));
   };
   
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
+      <div className="space-y-6 max-w-full">
+        <div className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-2xl font-bold">Job Applications</h1>
           
           <CSVLink 
@@ -264,87 +263,76 @@ const Applications = () => {
           </div>
         ) : (
           <div className="bg-white shadow rounded-lg overflow-hidden">
-            <Table>
-              <TableCaption>List of all job applications</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Job</TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Applied On</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Offer Letter</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredApplications.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-gray-500">
-                      No applications found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredApplications.map((application) => (
-                    <TableRow key={application.id}>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {application.student_profile?.first_name} {application.student_profile?.last_name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {application.student_profile?.phone}
-                          </div>
-                          {application.student_profile?.is_verified === false && (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 mt-1">
-                              Not Verified
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{application.job?.title}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div>{application.job?.company_name}</div>
-                          <div className="text-sm text-gray-500">
-                            {application.job?.location}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(application.created_at || '').toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge status={application.status as JobApplicationStatus} />
-                      </TableCell>
-                      <TableCell>
-                        {application.offer_letter_url ? (
-                          <a 
-                            href={application.offer_letter_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm flex items-center"
-                          >
-                            <FileDown className="mr-1 h-3 w-3" />View
-                          </a>
-                        ) : (
-                          <span className="text-gray-400 text-sm">Not uploaded</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleOpenStatusDialog(application)}
-                        >
-                          Update Status
-                        </Button>
-                      </TableCell>
+            <ScrollArea className="w-full max-w-full">
+              <div className="w-full overflow-auto">
+                <Table>
+                  <TableCaption>List of all job applications</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Job</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Applied On</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredApplications.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                          No applications found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredApplications.map((application) => (
+                        <TableRow key={application.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">
+                                {application.student_profile?.first_name} {application.student_profile?.last_name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {application.student_profile?.phone}
+                              </div>
+                              {application.student_profile?.is_verified === false && (
+                                <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 mt-1">
+                                  Not Verified
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{application.job?.title}</TableCell>
+                          <TableCell>
+                            <div>
+                              <div>{application.job?.company_name}</div>
+                              <div className="text-sm text-gray-500">
+                                {application.job?.location}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(application.created_at || '').toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={application.status as JobApplicationStatus} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleOpenStatusDialog(application)}
+                            >
+                              Update Status
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
           </div>
         )}
       </div>

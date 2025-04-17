@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useJobApplications } from '@/hooks/useJobApplications';
 import { useStudentProfile } from '@/hooks/useStudentProfile';
 import { JobApplicationStatus } from '@/types/database.types';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Briefcase, AlertTriangle, Clock, CheckCircle2, XCircle, Users, Lock, GraduationCap, Award, BarChart3 } from 'lucide-react';
 
 const statusDisplayConfig = {
@@ -69,7 +70,7 @@ const Applications = () => {
 
   return (
     <StudentLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-full">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">My Applications</h1>
           <p className="text-gray-600">Track all your job applications in one place</p>
@@ -103,56 +104,58 @@ const Applications = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-8 gap-4">
-          <Card className="bg-gray-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold">{counts.total}</div>
-              <div className="text-sm text-gray-500">Total</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-blue-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-blue-600">{counts.applied}</div>
-              <div className="text-sm text-blue-600">Applied</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-yellow-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-yellow-600">{counts.underReview}</div>
-              <div className="text-sm text-yellow-600">Under Review</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-purple-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-purple-600">{counts.shortlisted}</div>
-              <div className="text-sm text-purple-600">Shortlisted</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-green-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-green-600">{counts.selected}</div>
-              <div className="text-sm text-green-600">Selected</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-indigo-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-indigo-600">{counts.internship || 0}</div>
-              <div className="text-sm text-indigo-600">Internship</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-pink-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-pink-600">{counts.ppo || 0}</div>
-              <div className="text-sm text-pink-600">PPO</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-teal-50">
-            <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="text-3xl font-bold text-teal-600">{counts.placement || 0}</div>
-              <div className="text-sm text-teal-600">Placement</div>
-            </CardContent>
-          </Card>
-        </div>
+        <ScrollArea className="w-full">
+          <div className="grid grid-cols-2 md:grid-cols-8 gap-4 min-w-[800px]">
+            <Card className="bg-gray-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold">{counts.total}</div>
+                <div className="text-sm text-gray-500">Total</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-blue-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-blue-600">{counts.applied}</div>
+                <div className="text-sm text-blue-600">Applied</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-yellow-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-yellow-600">{counts.underReview}</div>
+                <div className="text-sm text-yellow-600">Under Review</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-purple-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-purple-600">{counts.shortlisted}</div>
+                <div className="text-sm text-purple-600">Shortlisted</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-green-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-green-600">{counts.selected}</div>
+                <div className="text-sm text-green-600">Selected</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-indigo-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-indigo-600">{counts.internship || 0}</div>
+                <div className="text-sm text-indigo-600">Internship</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-pink-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-pink-600">{counts.ppo || 0}</div>
+                <div className="text-sm text-pink-600">PPO</div>
+              </CardContent>
+            </Card>
+            <Card className="bg-teal-50">
+              <CardContent className="p-4 flex flex-col items-center justify-center">
+                <div className="text-3xl font-bold text-teal-600">{counts.placement || 0}</div>
+                <div className="text-sm text-teal-600">Placement</div>
+              </CardContent>
+            </Card>
+          </div>
+        </ScrollArea>
 
         {applications.length === 0 ? (
           <Card>
@@ -165,46 +168,48 @@ const Applications = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {applications.map((application) => (
-              <Card key={application.id} className="overflow-hidden">
-                <div className="flex flex-col md:flex-row">
-                  <div className="p-4 md:p-6 flex-grow">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                      <div>
-                        <h3 className="text-lg font-bold">{application.job?.title}</h3>
-                        <p className="text-gray-600">{application.job?.company_name}</p>
+          <ScrollArea className="w-full">
+            <div className="space-y-4 max-w-full">
+              {applications.map((application) => (
+                <Card key={application.id} className="overflow-hidden">
+                  <div className="flex flex-col md:flex-row">
+                    <div className="p-4 md:p-6 flex-grow">
+                      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <h3 className="text-lg font-bold">{application.job?.title}</h3>
+                          <p className="text-gray-600">{application.job?.company_name}</p>
+                        </div>
+                        <div className="flex items-center mt-2 md:mt-0">
+                          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDisplayConfig[application.status as JobApplicationStatus].color}`}>
+                            {statusDisplayConfig[application.status as JobApplicationStatus].icon}
+                            <span className="ml-1">{statusDisplayConfig[application.status as JobApplicationStatus].label}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center mt-2 md:mt-0">
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusDisplayConfig[application.status as JobApplicationStatus].color}`}>
-                          {statusDisplayConfig[application.status as JobApplicationStatus].icon}
-                          <span className="ml-1">{statusDisplayConfig[application.status as JobApplicationStatus].label}</span>
+                      
+                      <div className="mt-4 grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Location</p>
+                          <p className="font-medium">{application.job?.location || 'Not specified'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Package</p>
+                          <p className="font-medium">{application.job?.package || 'Not specified'}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-4 flex justify-between items-end">
+                        <div>
+                          <p className="text-sm text-gray-500">Applied On</p>
+                          <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="mt-4 grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-500">Location</p>
-                        <p className="font-medium">{application.job?.location || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Package</p>
-                        <p className="font-medium">{application.job?.package || 'Not specified'}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 flex justify-between items-end">
-                      <div>
-                        <p className="text-sm text-gray-500">Applied On</p>
-                        <p className="font-medium">{new Date(application.created_at).toLocaleDateString()}</p>
-                      </div>
-                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
         )}
       </div>
     </StudentLayout>

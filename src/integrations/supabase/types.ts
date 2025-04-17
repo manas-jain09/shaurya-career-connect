@@ -171,7 +171,6 @@ export type Database = {
           created_at: string
           id: string
           job_id: string
-          offer_letter_url: string | null
           status: string
           student_id: string
           updated_at: string
@@ -181,7 +180,6 @@ export type Database = {
           created_at?: string
           id?: string
           job_id: string
-          offer_letter_url?: string | null
           status?: string
           student_id: string
           updated_at?: string
@@ -191,7 +189,6 @@ export type Database = {
           created_at?: string
           id?: string
           job_id?: string
-          offer_letter_url?: string | null
           status?: string
           student_id?: string
           updated_at?: string
@@ -361,6 +358,7 @@ export type Database = {
           gender: string
           id: string
           is_blocked: boolean | null
+          is_frozen: boolean | null
           is_verified: boolean
           last_name: string
           phone: string
@@ -381,6 +379,7 @@ export type Database = {
           gender: string
           id?: string
           is_blocked?: boolean | null
+          is_frozen?: boolean | null
           is_verified?: boolean
           last_name: string
           phone: string
@@ -401,6 +400,7 @@ export type Database = {
           gender?: string
           id?: string
           is_blocked?: boolean | null
+          is_frozen?: boolean | null
           is_verified?: boolean
           last_name?: string
           phone?: string
