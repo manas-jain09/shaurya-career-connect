@@ -13,6 +13,7 @@ import { EditIcon, CheckCircle2, XCircle, Upload, AlertTriangle, GraduationCap, 
 import { supabase } from '@/integrations/supabase/client';
 import { uploadFile } from '@/utils/helpers';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const ProfilePage = () => {
   const { user } = useAuth();
@@ -25,6 +26,7 @@ const ProfilePage = () => {
     lastName: '',
     phone: '',
     address: '',
+    placementInterest: 'placement/internship'
   });
 
   const [classXForm, setClassXForm] = useState({
@@ -179,6 +181,7 @@ const ProfilePage = () => {
           last_name: profileForm.lastName,
           phone: profileForm.phone,
           address: profileForm.address || null,
+          placement_interest: profileForm.placementInterest
         })
         .eq('id', profile.id);
       
@@ -291,6 +294,7 @@ const ProfilePage = () => {
         lastName: profile.last_name,
         phone: profile.phone,
         address: profile.address || '',
+        placementInterest: profile.placement_interest || 'placement/internship'
       });
     }
   }, [profile]);
@@ -422,6 +426,23 @@ const ProfilePage = () => {
                     value={profileForm.address} 
                     onChange={e => setProfileForm({...profileForm, address: e.target.value})}
                   />
+                </div>
+                <div>
+                  <Label htmlFor="placementInterest">Career Interest</Label>
+                  <Select 
+                    value={profileForm.placementInterest} 
+                    onValueChange={(value) => setProfileForm({...profileForm, placementInterest: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select your career interest" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="placement/internship">Interested in Placement/Internship</SelectItem>
+                      <SelectItem value="higher_studies">Interested in Higher Studies</SelectItem>
+                      <SelectItem value="family_business">Interested in Family Business</SelectItem>
+                      <SelectItem value="entrepreneurship">Interested in Entrepreneurship</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             ) : (
