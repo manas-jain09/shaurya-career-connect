@@ -1,14 +1,16 @@
-
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import CompanyLayout from '@/components/layouts/CompanyLayout';
 import { JobPosting } from '@/types/database.types';
 import { toast } from 'sonner';
-import { CalendarClock, Users, UserCheck } from 'lucide-react';
+import { CalendarClock, Users, UserCheck, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import JobDetailsDialog from '@/components/company/JobDetailsDialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 const Jobs = () => {
   const { user } = useAuth();
@@ -16,6 +18,8 @@ const Jobs = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [applicationCounts, setApplicationCounts] = useState<Record<string, number>>({});
   const [selectedCounts, setSelectedCounts] = useState<Record<string, number>>({});
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [currentJob, setCurrentJob] = useState<JobPosting | null>(null);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -24,7 +28,6 @@ const Jobs = () => {
       try {
         setIsLoading(true);
         
-        // Fetch job postings for this company
         const { data: jobsData, error: jobsError } = await supabase
           .from('job_postings')
           .select('*')
@@ -35,14 +38,12 @@ const Jobs = () => {
         if (jobsData) {
           setJobs(jobsData as JobPosting[]);
           
-          // Get application counts for each job
           const appCounts: Record<string, number> = {};
           const selCounts: Record<string, number> = {};
           
           for (const job of jobsData) {
             if (!job.id) continue;
             
-            // Get application count
             const { count: appCount, error: appError } = await supabase
               .from('job_applications')
               .select('*', { count: 'exact', head: true })
@@ -52,7 +53,6 @@ const Jobs = () => {
               appCounts[job.id] = appCount || 0;
             }
             
-            // Get selected candidates count
             const { count: selCount, error: selError } = await supabase
               .from('job_applications')
               .select('*', { count: 'exact', head: true })
@@ -87,6 +87,11 @@ const Jobs = () => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleViewJob = (job: JobPosting) => {
+    setCurrentJob(job);
+    setShowDetailsDialog(true);
   };
 
   return (
@@ -141,6 +146,15 @@ const Jobs = () => {
           ))}
         </div>
       )}
+
+      {/* Job Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl">
+          {currentJob && (
+            <JobDetailsDialog job={currentJob} />
+          )}
+        </DialogContent>
+      </Dialog>
     </CompanyLayout>
   );
 };
