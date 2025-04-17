@@ -15,7 +15,6 @@ interface StudentProfileData {
   refreshData: () => Promise<void>;
   isEligibleForJobs: boolean;
   is_frozen: boolean;
-  flaggedSections: string[];
 }
 
 export const useStudentProfile = (profileId?: string): StudentProfileData => {
@@ -29,7 +28,6 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
   const [error, setError] = useState<string | null>(null);
   const [isEligibleForJobs, setIsEligibleForJobs] = useState<boolean>(false);
   const [is_frozen, setIs_frozen] = useState<boolean>(false);
-  const [flaggedSections, setFlaggedSections] = useState<string[]>([]);
 
   // Use the provided profileId or get it from the user
   const studentProfileId = profileId || user?.profileId;
@@ -60,9 +58,6 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
       
       // Use the is_eligible field from the database
       setIsEligibleForJobs(profileData.is_eligible !== null ? profileData.is_eligible : true);
-      
-      // Set flagged sections if available
-      setFlaggedSections(profileData.flagged_sections || []);
       
       console.log('Profile data:', profileData);
 
@@ -128,7 +123,6 @@ export const useStudentProfile = (profileId?: string): StudentProfileData => {
     error,
     refreshData: fetchProfileData,
     isEligibleForJobs,
-    is_frozen,
-    flaggedSections
+    is_frozen
   };
 };

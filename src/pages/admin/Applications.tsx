@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CSVLink } from 'react-csv';
 import AdminLayout from '@/components/layouts/AdminLayout';
@@ -29,11 +28,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { JobApplication, JobApplicationStatus } from '@/types/database.types';
-import { Loader2, Search, FileDown, Filter, CheckSquare, Square } from 'lucide-react';
+import { Loader2, Search, FileDown, Filter } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const statusColors: Record<JobApplicationStatus, string> = {
@@ -65,11 +63,8 @@ const Applications = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedApplication, setSelectedApplication] = useState<JobApplication | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState<JobApplicationStatus>('applied');
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
-  const [selectAll, setSelectAll] = useState(false);
   
   const { toast } = useToast();
   
@@ -92,9 +87,6 @@ const Applications = () => {
       const typedApplications = data as JobApplication[];
       setApplications(typedApplications);
       setFilteredApplications(typedApplications);
-      // Reset selections when data is refreshed
-      setSelectedApplications([]);
-      setSelectAll(false);
     } catch (error) {
       console.error('Error fetching applications:', error);
       toast({
@@ -202,101 +194,6 @@ const Applications = () => {
     }
   };
   
-  const handleBatchUpdateStatus = async () => {
-    if (selectedApplications.length === 0) return;
-    
-    try {
-      setUpdatingStatus(true);
-      
-      // Get the student IDs that need to be frozen
-      const selectedApps = applications.filter(app => 
-        selectedApplications.includes(app.id || '') && 
-        !['selected', 'internship', 'ppo', 'placement'].includes(app.status) && 
-        ['selected', 'internship', 'ppo', 'placement'].includes(newStatus)
-      );
-      
-      const studentIdsToFreeze = [...new Set(selectedApps.map(app => app.student_id))];
-      
-      // Update all selected applications
-      const { error } = await supabase
-        .from('job_applications')
-        .update({
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .in('id', selectedApplications);
-      
-      if (error) throw error;
-      
-      // Freeze profiles if needed
-      if (studentIdsToFreeze.length > 0) {
-        const { error: freezeError } = await supabase
-          .from('student_profiles')
-          .update({
-            is_frozen: true,
-            updated_at: new Date().toISOString()
-          })
-          .in('id', studentIdsToFreeze);
-        
-        if (freezeError) throw freezeError;
-        
-        // Reject other applications from the same students
-        for (const studentId of studentIdsToFreeze) {
-          const { error: rejectError } = await supabase
-            .from('job_applications')
-            .update({
-              status: 'rejected',
-              admin_notes: `Automatically rejected because student was ${newStatus} for another position`,
-              updated_at: new Date().toISOString()
-            })
-            .eq('student_id', studentId)
-            .not('id', 'in', selectedApplications)
-            .not('status', 'in', '("selected","internship","ppo","placement","rejected")');
-          
-          if (rejectError) {
-            console.error(`Error rejecting other applications for student ${studentId}:`, rejectError);
-          }
-        }
-      }
-      
-      toast({
-        title: 'Success',
-        description: `Updated ${selectedApplications.length} applications successfully`
-      });
-      
-      fetchApplications();
-      setBatchDialogOpen(false);
-      setSelectedApplications([]);
-      setSelectAll(false);
-    } catch (error) {
-      console.error('Error updating application status in batch:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to update application status',
-        variant: 'destructive',
-      });
-    } finally {
-      setUpdatingStatus(false);
-    }
-  };
-  
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedApplications([]);
-    } else {
-      setSelectedApplications(filteredApplications.map(app => app.id || '').filter(Boolean));
-    }
-    setSelectAll(!selectAll);
-  };
-  
-  const toggleSelectApplication = (id: string) => {
-    if (selectedApplications.includes(id)) {
-      setSelectedApplications(selectedApplications.filter(appId => appId !== id));
-    } else {
-      setSelectedApplications([...selectedApplications, id]);
-    }
-  };
-  
   const getCSVData = () => {
     return filteredApplications.map(app => ({
       'Student Name': `${app.student_profile?.first_name} ${app.student_profile?.last_name}`,
@@ -316,28 +213,14 @@ const Applications = () => {
         <div className="flex flex-wrap justify-between items-center gap-4">
           <h1 className="text-2xl font-bold">Job Applications</h1>
           
-          <div className="flex space-x-2">
-            {selectedApplications.length > 0 && (
-              <Button 
-                variant="secondary"
-                onClick={() => {
-                  setNewStatus('applied');
-                  setBatchDialogOpen(true);
-                }}
-              >
-                Update {selectedApplications.length} Selected
-              </Button>
-            )}
-            
-            <CSVLink 
-              data={getCSVData()} 
-              filename={'job-applications.csv'} 
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              Export to CSV
-            </CSVLink>
-          </div>
+          <CSVLink 
+            data={getCSVData()} 
+            filename={'job-applications.csv'} 
+            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            Export to CSV
+          </CSVLink>
         </div>
         
         <div className="flex flex-col md:flex-row gap-4">
@@ -386,15 +269,6 @@ const Applications = () => {
                   <TableCaption>List of all job applications</TableCaption>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>
-                        <div className="flex items-center" onClick={toggleSelectAll} style={{ cursor: 'pointer' }}>
-                          {selectAll ? (
-                            <CheckSquare className="h-5 w-5 text-blue-600" />
-                          ) : (
-                            <Square className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-                      </TableHead>
                       <TableHead>Student</TableHead>
                       <TableHead>Job</TableHead>
                       <TableHead>Company</TableHead>
@@ -406,25 +280,13 @@ const Applications = () => {
                   <TableBody>
                     {filteredApplications.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                        <TableCell colSpan={6} className="text-center py-6 text-gray-500">
                           No applications found
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredApplications.map((application) => (
                         <TableRow key={application.id}>
-                          <TableCell>
-                            <div 
-                              onClick={() => application.id && toggleSelectApplication(application.id)}
-                              style={{ cursor: 'pointer' }}
-                            >
-                              {selectedApplications.includes(application.id || '') ? (
-                                <CheckSquare className="h-5 w-5 text-blue-600" />
-                              ) : (
-                                <Square className="h-5 w-5 text-gray-400" />
-                              )}
-                            </div>
-                          </TableCell>
                           <TableCell>
                             <div>
                               <div className="font-medium">
@@ -475,7 +337,6 @@ const Applications = () => {
         )}
       </div>
       
-      {/* Single application status dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -556,91 +417,6 @@ const Applications = () => {
                 </>
               ) : (
                 'Update Status'
-              )}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Batch update dialog */}
-      <Dialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Update Multiple Applications</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="mb-4">
-              <h3 className="font-medium">
-                Update {selectedApplications.length} Selected Applications
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">
-                This will update the status of all selected applications.
-              </p>
-            </div>
-            
-            <ScrollArea className="max-h-[60vh] overflow-auto pr-3">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>New Status</Label>
-                  <RadioGroup 
-                    value={newStatus} 
-                    onValueChange={(value) => setNewStatus(value as JobApplicationStatus)}
-                    className="flex flex-col space-y-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="applied" id="batch-applied" />
-                      <Label htmlFor="batch-applied">Applied</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="under_review" id="batch-under_review" />
-                      <Label htmlFor="batch-under_review">Under Review</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="shortlisted" id="batch-shortlisted" />
-                      <Label htmlFor="batch-shortlisted">Shortlisted</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="rejected" id="batch-rejected" />
-                      <Label htmlFor="batch-rejected">Rejected</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="selected" id="batch-selected" />
-                      <Label htmlFor="batch-selected">Selected</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="internship" id="batch-internship" />
-                      <Label htmlFor="batch-internship">Internship</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="ppo" id="batch-ppo" />
-                      <Label htmlFor="batch-ppo">PPO</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="placement" id="batch-placement" />
-                      <Label htmlFor="batch-placement">Placement</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              </div>
-            </ScrollArea>
-          </div>
-          
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setBatchDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleBatchUpdateStatus}
-              disabled={updatingStatus}
-            >
-              {updatingStatus ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                `Update ${selectedApplications.length} Applications`
               )}
             </Button>
           </div>
