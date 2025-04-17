@@ -1,3 +1,4 @@
+
 import React from 'react';
 import StudentLayout from '@/components/layouts/StudentLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -192,6 +193,16 @@ const Applications = () => {
                             >
                               <Download className="h-4 w-4 mr-1" />
                               Offer Letter
+                            </Button>
+                          )}
+                          {application.resume_url && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(application.resume_url!, '_blank')}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Resume
                             </Button>
                           )}
                         </div>
