@@ -24,6 +24,22 @@ import CompanyDashboard from './pages/company/Dashboard';
 import CompanyJobs from './pages/company/Jobs';
 import CompanyApplications from './pages/company/Applications';
 
+const AppContent = () => {
+  const { isInIframe } = useIframe();
+
+  useEffect(() => {
+    // Set iframe-specific styles and configurations
+    if (isInIframe) {
+      // Remove body margins and padding for seamless iframe integration
+      document.body.style.margin = '0';
+      document.body.style.padding = '0';
+      document.body.style.overflow = 'auto';
+      
+      // Add iframe-specific class for conditional styling
+      document.body.classList.add('iframe-mode');
+    }
+  }, [isInIframe]);
+
 function App() {
   const theme = localStorage.getItem('theme') || 'light';
 
@@ -35,6 +51,7 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/iframe" element={<IframeAuth />} />
             
             <Route path="/admin/dashboard" element={
               <ProtectedRoute requiredRole="admin">
