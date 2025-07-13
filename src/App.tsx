@@ -39,6 +39,7 @@ const AppContent = () => {
       document.body.classList.add('iframe-mode');
     }
   }, [isInIframe]);
+}
 
 function App() {
   const theme = localStorage.getItem('theme') || 'light';
