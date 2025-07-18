@@ -92,22 +92,6 @@
   body {
     @apply bg-background text-foreground;
   }
-   /* Iframe-specific styles */
-  body.iframe-mode {
-    margin: 0 !important;
-    padding: 0 !important;
-    overflow: auto !important;
-  }
-  
-  body.iframe-mode .navbar,
-  body.iframe-mode .footer {
-    display: none;
-  }
-  
-  body.iframe-mode .page-container {
-    padding: 1rem;
-    max-width: none;
-  }
 }
 
 @layer components {

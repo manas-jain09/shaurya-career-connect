@@ -24,7 +24,6 @@ import CompanyDashboard from './pages/company/Dashboard';
 import CompanyJobs from './pages/company/Jobs';
 import CompanyApplications from './pages/company/Applications';
 
-
 function App() {
   const theme = localStorage.getItem('theme') || 'light';
 
