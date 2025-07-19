@@ -1,1 +1,17 @@
 project_id = "ydfzjpzwbgyrtjxslsbs"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+enabled = true
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[functions.iframe-embed]
+verify_jwt = false

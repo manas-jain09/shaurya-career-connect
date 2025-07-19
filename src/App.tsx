@@ -26,6 +26,42 @@ import CompanyApplications from './pages/company/Applications';
 
 function App() {
   const theme = localStorage.getItem('theme') || 'light';
+  
+  // Check if app is embedded in iframe
+  const isEmbedded = new URLSearchParams(window.location.search).get('embedded') === 'true';
+  
+  // Add iframe-friendly styles and communication
+  React.useEffect(() => {
+    if (isEmbedded) {
+      // Remove margins and padding for iframe embedding
+      document.body.style.margin = '0';
+      document.body.style.padding = '0';
+      document.body.style.overflow = 'hidden';
+      
+      // Send resize messages to parent
+      const sendResize = () => {
+        if (window.parent) {
+          window.parent.postMessage({
+            type: 'resize',
+            height: document.body.scrollHeight
+          }, '*');
+        }
+      };
+      
+      // Send initial resize
+      setTimeout(sendResize, 100);
+      
+      // Listen for resize events
+      window.addEventListener('resize', sendResize);
+      const observer = new ResizeObserver(sendResize);
+      observer.observe(document.body);
+      
+      return () => {
+        window.removeEventListener('resize', sendResize);
+        observer.disconnect();
+      };
+    }
+  }, [isEmbedded]);
 
   return (
     <AuthProvider>

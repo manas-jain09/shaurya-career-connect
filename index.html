@@ -5,6 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shaurya</title>
     <link rel="icon" href="/Shaurya.png" />
+    <script>
+      // Iframe support - Allow app to be embedded
+      if (window.self !== window.top) {
+        // App is being loaded in an iframe
+        document.addEventListener('DOMContentLoaded', function() {
+          // Remove X-Frame-Options restrictions
+          document.querySelector('meta[http-equiv="X-Frame-Options"]')?.remove();
+          
+          // Send resize messages to parent
+          const sendResize = () => {
+            if (window.parent) {
+              window.parent.postMessage({
+                type: 'resize',
+                height: document.body.scrollHeight
+              }, '*');
+            }
+          };
+          
+          // Send resize on load and content changes
+          setTimeout(sendResize, 100);
+          window.addEventListener('resize', sendResize);
+          
+          // Observe content changes
+          const observer = new ResizeObserver(sendResize);
+          observer.observe(document.body);
+        });
+      }
+    </script>
   </head>
 
   <body>
